@@ -1,0 +1,131 @@
+// AFPaywallKit+Types.swift
+// PaywallKit SDK
+//
+// Public types: results, errors, configuration.
+
+import Foundation
+import UIKit
+
+// MARK: - AFPaywallResult
+
+/// Paywall presentation result.
+public enum AFPaywallResult: Sendable, Equatable {
+    case purchased              // Just purchased subscription
+    case restored               // Restored purchase
+    case alreadyPurchased       // Already has active subscription (paywall was not shown)
+    case cancelled              // User closed paywall without purchase
+    case failed(AFPaywallKitError)
+}
+
+extension AFPaywallResult {
+    /// `true` if user has active subscription (purchased, restored or already had).
+    public var isSuccess: Bool {
+        switch self {
+        case .purchased, .restored, .alreadyPurchased: return true
+        default: return false
+        }
+    }
+}
+
+// MARK: - AFPaywallKitError
+
+public enum AFPaywallKitError: LocalizedError, Sendable {
+    // Configuration
+    case notConfigured
+    case noProductIds
+
+    // Network / loading
+    case timeout
+    case noProducts
+
+    // Purchase
+    case subscriptionNotActive
+    case noActiveSubscription
+    case verificationFailed
+    case providerError(Error)
+    case unknown
+
+    public var errorDescription: String? {
+        switch self {
+        case .notConfigured:         return "[PaywallKit] SDK not configured. Call PaywallKit.configure() first."
+        case .noProductIds:          return "[PaywallKit] No product IDs provided in configuration."
+        case .timeout:               return "[PaywallKit] Request timed out."
+        case .noProducts:            return "[PaywallKit] No products available for purchase."
+        case .subscriptionNotActive: return "[PaywallKit] Purchase completed but subscription is not active."
+        case .noActiveSubscription:  return "[PaywallKit] No active subscription found."
+        case .verificationFailed:    return "[PaywallKit] Transaction verification failed."
+        case .providerError(let e):  return "[PaywallKit] Provider error: \(e.localizedDescription)"
+        case .unknown:               return "[PaywallKit] Unknown error occurred."
+        }
+    }
+}
+
+extension AFPaywallKitError: Equatable {
+    public static func == (lhs: AFPaywallKitError, rhs: AFPaywallKitError) -> Bool {
+        switch (lhs, rhs) {
+        case (.notConfigured, .notConfigured),
+             (.noProductIds, .noProductIds),
+             (.timeout, .timeout),
+             (.noProducts, .noProducts),
+             (.subscriptionNotActive, .subscriptionNotActive),
+             (.noActiveSubscription, .noActiveSubscription),
+             (.verificationFailed, .verificationFailed),
+             (.unknown, .unknown):
+            return true
+        case (.providerError, .providerError):
+            // Errors themselves don't conform to Equatable, so we treat all providerError cases as equal
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+// MARK: - AFPaywallKitConfiguration
+
+/// SDK configuration. Passed once during initialization.
+public struct AFPaywallKitConfiguration: Sendable {
+
+    /// Product IDs for StoreKit fallback.
+    public let productIds: [String]
+
+    /// Timeout for provider network requests.
+    public let fetchTimeout: TimeInterval
+
+    /// Accent color for paywall UI (default .systemBlue).
+    public let accentColor: UIColor
+
+    /// Logger. Replaces default `print`-based.
+    public let logger: AFPaywallKitLogger?
+
+    public init(
+        productIds: [String],
+        fetchTimeout: TimeInterval = 15.0,
+        accentColor: UIColor = .systemBlue,
+        logger: AFPaywallKitLogger? = nil
+    ) {
+        self.productIds = productIds
+        self.fetchTimeout = fetchTimeout
+        self.accentColor = accentColor
+        self.logger = logger
+    }
+}
+
+// MARK: - AFPaywallKitLogger
+
+/// Logger protocol. Substitute any tool: OSLog, Firebase, custom.
+public protocol AFPaywallKitLogger: Sendable {
+    func log(_ message: String, level: AFPaywallKitLogLevel)
+}
+
+public enum AFPaywallKitLogLevel: Sendable {
+    case debug, info, warning, error
+}
+
+/// Default logger via `print`.
+public struct AFConsoleLogger: AFPaywallKitLogger {
+    public init() {}
+    public func log(_ message: String, level: AFPaywallKitLogLevel) {
+        print("[PaywallKit][\(level)] \(message)")
+    }
+}
