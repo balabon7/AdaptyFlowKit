@@ -36,14 +36,14 @@ A comprehensive iOS SDK for managing onboarding flows, paywall presentations, an
 Add AdaptyFlowKit to your project via Xcode:
 
 1. File → Add Package Dependencies
-2. Enter package URL: `https://github.com/YourUsername/AdaptyFlowKit.git`
+2. Enter package URL: `https://github.com/balabon7/AdaptyFlowKit.git`
 3. Select version: `from 1.0.0`
 
 Or add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/YourUsername/AdaptyFlowKit.git", from: "1.0.0")
+    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.0")
 ]
 ```
 
@@ -423,8 +423,8 @@ AdaptyFlowKit is available under the MIT license. See LICENSE for details.
 ## Support
 
 For issues and questions:
-- GitHub Issues: [Create an issue](https://github.com/YourUsername/AdaptyFlowKit/issues)
-- Email: support@yourcompany.com
+- GitHub Issues: [Create an issue](https://github.com/balabon7/AdaptyFlowKit/issues)
+- Email: support@yourapp.com
 
 ## Credits
 

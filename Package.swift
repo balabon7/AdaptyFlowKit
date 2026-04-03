@@ -4,8 +4,7 @@ import PackageDescription
 let package = Package(
     name: "AdaptyFlowKit",
     platforms: [
-        .iOS(.v16),
-        .macOS(.v11)
+        .iOS(.v16)
     ],
     products: [
         // Main product - exports all three kits
@@ -28,9 +27,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // External dependencies - using matching versions
-        .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS.git", from: "2.11.0"),
-        .package(url: "https://github.com/adaptyteam/AdaptyUI-iOS.git", from: "2.11.0"),
+        // External dependencies - matching MrScan project versions
+        .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS.git", from: "3.15.0"),
+        .package(url: "https://github.com/adaptyteam/AdaptyUI-iOS.git", from: "3.0.0"),
     ],
     targets: [
         // Main module (re-exports all three)

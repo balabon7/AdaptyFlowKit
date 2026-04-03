@@ -71,7 +71,7 @@ Check Adapty 2.11.x documentation: https://docs.adapty.io/v2.0/docs/ios-sdk-over
 
 4. **Push to GitHub** (create repo first):
    ```bash
-   git remote add origin https://github.com/YourUsername/AdaptyFlowKit.git
+   git remote add origin https://github.com/balabon7/AdaptyFlowKit.git
    git branch -M main
    git push -u origin main
    
@@ -106,7 +106,7 @@ The API remains the same - only imports change!
 
 ## Package Location
 
-Current location: `/Users/oleksandrbalabon/Documents/Developer/SsoftTeam/AdaptyFlowKit`
+Current location: `/Users/oleksandrbalabon/Documents/Developer/AdaptyFlowKit`
 
 ## Support
 

@@ -70,7 +70,7 @@ targets: 7 (3 kits + main module + 3 test targets)
 ## 📍 Location
 
 ```
-/Users/oleksandrbalabon/Documents/Developer/SsoftTeam/AdaptyFlowKit/
+/Users/oleksandrbalabon/Documents/Developer/AdaptyFlowKit/
 ```
 
 ## ⚠️ Action Required
