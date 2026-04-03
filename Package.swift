@@ -27,9 +27,8 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // External dependencies - matching MrScan project versions
+        // AdaptyUI is bundled inside AdaptySDK-iOS since v3.x (AdaptyUI-iOS repo is archived at 2.x)
         .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS.git", from: "3.15.0"),
-        .package(url: "https://github.com/adaptyteam/AdaptyUI-iOS.git", from: "3.0.0"),
     ],
     targets: [
         // Main module (re-exports all three)
@@ -47,7 +46,7 @@ let package = Package(
             name: "OnboardingKit",
             dependencies: [
                 .product(name: "Adapty", package: "AdaptySDK-iOS"),
-                .product(name: "AdaptyUI", package: "AdaptyUI-iOS"),
+                .product(name: "AdaptyUI", package: "AdaptySDK-iOS"),
                 "PaywallKit" // For AFAppFlowKit and shared types
             ]
         ),
@@ -57,7 +56,7 @@ let package = Package(
             name: "PaywallKit",
             dependencies: [
                 .product(name: "Adapty", package: "AdaptySDK-iOS"),
-                .product(name: "AdaptyUI", package: "AdaptyUI-iOS"),
+                .product(name: "AdaptyUI", package: "AdaptySDK-iOS"),
             ]
         ),
         
