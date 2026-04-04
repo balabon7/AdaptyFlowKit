@@ -46,37 +46,6 @@ public enum AFOnboardingKitError: LocalizedError, Sendable {
     }
 }
 
-// MARK: - OnboardingKitConfiguration
-
-/// AFOnboardingKit configuration. Passed once during configure().
-public struct AFOnboardingKitConfiguration: Sendable {
-
-    /// Timeout for loading onboarding from server (fetch + configuration).
-    public let fetchTimeout: TimeInterval
-
-    /// Timeout after showing controller — if `didFinishLoading` never comes
-    /// (octopusbuilder bug). SDK falls back or considers onboarding loaded.
-    public let displayTimeout: TimeInterval
-
-    /// Skip network check. For testing.
-    public let skipNetworkCheck: Bool
-
-    /// Logger — same as in PaywallKit.
-    public let logger: AFPaywallKitLogger?
-
-    public init(
-        fetchTimeout: TimeInterval = 10.0,
-        displayTimeout: TimeInterval = 15.0,
-        skipNetworkCheck: Bool = false,
-        logger: AFPaywallKitLogger? = nil
-    ) {
-        self.fetchTimeout = fetchTimeout
-        self.displayTimeout = displayTimeout
-        self.skipNetworkCheck = skipNetworkCheck
-        self.logger = logger
-    }
-}
-
 // MARK: - OnboardingPermissionHandler
 
 /// Protocol for handling permission requests from Adapty onboarding.

@@ -2,7 +2,6 @@
 // AdaptyFlowKit SDK
 //
 // Implementation of OnboardingProvider for Adapty Onboarding SDK.
-// Solves all issues with AdaptyOnboardingViewController + OnboardingService.
 
 import UIKit
 import Adapty
@@ -12,6 +11,9 @@ import AdaptyUI
 
 /// Onboarding provider based on Adapty.
 /// Conforms to `AFOnboardingProvider` — fully replaceable.
+///
+/// Timeouts are read from `AFOnboardingKit.fetchTimeout` / `AFOnboardingKit.displayTimeout`
+/// at presentation time — no need to pass them manually.
 ///
 /// **What it solves compared to the original:**
 /// - Instead of 4 bool flags — `OnboardingState` enum
@@ -23,19 +25,13 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
 
     // MARK: - Dependencies
 
-    private let fetchTimeout: TimeInterval
-    private let displayTimeout: TimeInterval
     private let permissionHandler: AFOnboardingPermissionHandler?
 
     // MARK: - Init
 
-    public init(
-        fetchTimeout: TimeInterval = 10.0,
-        displayTimeout: TimeInterval = 15.0,
-        permissionHandler: AFOnboardingPermissionHandler? = nil
-    ) {
-        self.fetchTimeout = fetchTimeout
-        self.displayTimeout = displayTimeout
+    /// - Parameter permissionHandler: Handles permission requests from Adapty onboarding
+    ///   (e.g. notifications, ATT). Usually `self` from AppDelegate.
+    public init(permissionHandler: AFOnboardingPermissionHandler? = nil) {
         self.permissionHandler = permissionHandler
     }
 
@@ -46,6 +42,10 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
         placementId: String,
         from presenter: UIViewController
     ) async -> AFOnboardingResult {
+        // Read timeouts from global static properties at call time
+        let fetchTimeout = AFOnboardingKit.fetchTimeout
+        let displayTimeout = AFOnboardingKit.displayTimeout
+
         do {
             // 1. Fetch
             let onboarding = try await withTimeout(fetchTimeout) {
@@ -56,7 +56,11 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
             let configuration = try AdaptyUI.getOnboardingConfiguration(forOnboarding: onboarding)
 
             // 3. Show controller via continuation
-            return await showController(configuration: configuration, from: presenter)
+            return await showController(
+                configuration: configuration,
+                from: presenter,
+                displayTimeout: displayTimeout
+            )
 
         } catch let error as AFOnboardingKitError {
             return .failed(error)
@@ -70,7 +74,8 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
     @MainActor
     private func showController(
         configuration: AdaptyUI.OnboardingConfiguration,
-        from presenter: UIViewController
+        from presenter: UIViewController,
+        displayTimeout: TimeInterval
     ) async -> AFOnboardingResult {
         await withCheckedContinuation { continuation in
             let sink = AFSingleFireContinuation(continuation)
@@ -98,7 +103,7 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
         }
     }
 
-    // MARK: - Timeout
+    // MARK: - Timeout helper
 
     private func withTimeout<T>(
         _ seconds: TimeInterval,
@@ -129,11 +134,10 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
 
     // MARK: - State
 
-    /// Replaces 4 bool flags from the original code.
     private enum State {
-        case waitingForLoad     // Controller displayed, waiting for didFinishLoading or alive signal
-        case alive              // Content is alive — timeout canceled
-        case done               // Continuation already called
+        case waitingForLoad
+        case alive
+        case done
     }
 
     private var state: State = .waitingForLoad
@@ -174,8 +178,6 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
 
     // MARK: - Display timeout
 
-    /// Called after `present(_:animated:completion:)` — that is, when the controller is actually visible.
-    /// The original code started the timeout before display, which gave inaccurate results.
     func beginDisplayTimeout() {
         guard case .waitingForLoad = state else { return }
 
@@ -184,9 +186,6 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
             try? await Task.sleep(nanoseconds: UInt64(self.displayTimeout * 1_000_000_000))
             guard !Task.isCancelled else { return }
             guard case .waitingForLoad = self.state else { return }
-
-            // Timeout triggered — onboarding never loaded
-            // Finish as failed so OnboardingKit can show fallback
             self.finish(controller: nil, with: .failed(.displayTimeout))
         }
     }
@@ -196,12 +195,9 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
         displayTimeoutTask = nil
     }
 
-    // MARK: - "Alive signal" (octopusbuilder bug fix)
-    //
-    // Adapty onboarding may never send `didFinishLoading`
-    // due to the "Unable to hide query parameters from script (missing data)" bug.
-    // But if analytics or state events arrive — the content is clearly alive and visible.
-    // Therefore, any of them cancels the display timeout.
+    // MARK: - Alive signal
+    // Adapty onboarding may never send `didFinishLoading` due to octopusbuilder bug.
+    // Any analytics/state event confirms the content is alive — cancel timeout.
 
     private func handleAliveSignal() {
         guard case .waitingForLoad = state else { return }
@@ -215,7 +211,6 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
         guard case .done = state else {
             state = .done
             cancelDisplayTimeout()
-
             guard let controller else {
                 completion.resume(with: result)
                 return
@@ -229,20 +224,17 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
 
     // MARK: - AdaptyOnboardingControllerDelegate
 
-    // ── Loading ──
-
     func onboardingController(
         _ controller: AdaptyOnboardingController,
         didFinishLoading action: OnboardingsDidFinishLoadingAction
     ) {
-        handleAliveSignal()  // didFinishLoading — the most reliable alive signal
+        handleAliveSignal()
     }
 
     func onboardingController(
         _ controller: AdaptyOnboardingController,
         onAnalyticsEvent event: AdaptyOnboardingsAnalyticsEvent
     ) {
-        // Analytics events come from web content → content is clearly alive
         handleAliveSignal()
     }
 
@@ -250,11 +242,8 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
         _ controller: AdaptyOnboardingController,
         onStateUpdatedAction action: AdaptyOnboardingsStateUpdatedAction
     ) {
-        // State updates also confirm that content is working
         handleAliveSignal()
     }
-
-    // ── Close ──
 
     func onboardingController(
         _ controller: AdaptyOnboardingController,
@@ -263,16 +252,12 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
         finish(controller: controller, with: .completed)
     }
 
-    // ── Error ──
-
     func onboardingController(
         _ controller: AdaptyOnboardingController,
         didFailWithError error: AdaptyUIError
     ) {
         finish(controller: controller, with: .failed(.providerError(error)))
     }
-
-    // ── Custom actions (permissions) ──
 
     func onboardingController(
         _ controller: AdaptyOnboardingController,
@@ -282,13 +267,10 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
         permissionHandler?.handlePermission(permAction)
     }
 
-    // ── Paywall from onboarding ──
-
     func onboardingController(
         _ controller: AdaptyOnboardingController,
         onPaywallAction action: AdaptyOnboardingsOpenPaywallAction
     ) {
         // Adapty SDK opens paywall automatically.
-        // If custom logic is needed — extend through AFOnboardingEventHandler.
     }
 }

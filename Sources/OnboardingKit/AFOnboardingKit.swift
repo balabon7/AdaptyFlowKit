@@ -2,7 +2,6 @@
 // AdaptyFlowKit SDK
 //
 // Main entry point for OnboardingKit.
-// Mirrors PaywallKit.swift — same idioms, same configure/show pattern.
 
 import UIKit
 
@@ -10,42 +9,47 @@ import UIKit
 
 /// Main OnboardingKit class.
 ///
+/// **Usage:**
 /// ```swift
-/// // AppDelegate
-/// OnboardingKit.configure(
-///     configuration: .init(fetchTimeout: 10, displayTimeout: 15),
-///     primaryProvider: AFAdaptyOnboardingProvider(
-///         fetchTimeout: 10,    // ← must match configuration.fetchTimeout
-///         displayTimeout: 15   // ← must match configuration.displayTimeout
-///     ),
-///     fallbackUI: MyOnboardingViewController.self
+/// // AppDelegate — set static properties, then call configure()
+/// AFOnboardingKit.fetchTimeout = 10
+/// AFOnboardingKit.displayTimeout = 15
+/// AFDefaultOnboardingAdapter.pages = [ ... ]
+/// AFOnboardingKit.configure(
+///     primaryProvider: AFAdaptyOnboardingProvider(permissionHandler: self),
+///     fallbackUI: AFDefaultOnboardingAdapter.self
 /// )
 ///
 /// // Anywhere
-/// let result = await OnboardingKit.shared.show(placementId: "main", from: self)
+/// let result = await AFOnboardingKit.shared.show(placementId: "main", from: self)
 /// ```
-///
-/// > **Important about timeouts:**
-/// > `OnboardingKitConfiguration.fetchTimeout` / `displayTimeout` are used
-/// > for logging and documenting intent. Actual timeouts are controlled by the provider
-/// > (e.g. `AFAdaptyOnboardingProvider.init(fetchTimeout:displayTimeout:)`).
-/// > Ensure values match — SDK cannot pass them automatically,
-/// > because the provider is already created before `configure()` is called.
 @MainActor
 public final class AFOnboardingKit {
+
+    // MARK: - Global Configuration Properties
+
+    /// Timeout for loading onboarding from server. Default: 10 seconds.
+    public static var fetchTimeout: TimeInterval = 10.0
+
+    /// Timeout after showing controller — if didFinishLoading never arrives.
+    /// SDK falls back to fallback UI. Default: 15 seconds.
+    public static var displayTimeout: TimeInterval = 15.0
+
+    /// Skip network check before attempting primary provider.
+    /// Use `true` for testing. Default: false.
+    public static var skipNetworkCheck: Bool = false
 
     // MARK: - Singleton
 
     public static let shared = AFOnboardingKit()
     private init() {}
 
-    // MARK: - State
+    // MARK: - Internal State
 
-    private var configuration: AFOnboardingKitConfiguration?
+    private var isSetup = false
     private var primaryProvider: AFOnboardingProvider?
     private var fallbackProvider: AFOnboardingProvider?
     private var eventHandler: AFOnboardingEventHandler?
-    private var logger: AFPaywallKitLogger = AFConsoleLogger()
 
     // MARK: - Storage key for "has completed onboarding"
 
@@ -59,42 +63,36 @@ public final class AFOnboardingKit {
 
     // MARK: - Configure
 
-    /// Basic configuration with custom fallback provider.
-    public static func configure(
-        configuration: AFOnboardingKitConfiguration = .init(),
-        primaryProvider: AFOnboardingProvider,
-        fallbackProvider: AFOnboardingProvider? = nil,
-        eventHandler: AFOnboardingEventHandler? = nil
-    ) {
-        let kit = AFOnboardingKit.shared
-        kit.configuration = configuration
-        kit.primaryProvider = primaryProvider
-        kit.fallbackProvider = fallbackProvider
-        kit.eventHandler = eventHandler
-        kit.logger = configuration.logger ?? AFConsoleLogger()
-    }
-
-    /// Convenient configuration — pass your class as fallback UI.
+    /// Configures with a primary provider and custom fallback UI type.
     ///
-    /// ```swift
-    /// OnboardingKit.configure(
-    ///     primaryProvider: AFAdaptyOnboardingProvider(),
-    ///     fallbackUI: MyOnboardingViewController.self
-    /// )
-    /// ```
+    /// - Parameters:
+    ///   - primaryProvider: Main onboarding provider (e.g. `AFAdaptyOnboardingProvider`).
+    ///   - fallbackUI: ViewController type used as fallback (e.g. `AFDefaultOnboardingAdapter.self`).
+    ///   - eventHandler: Optional delegate for onboarding lifecycle events.
     public static func configure(
-        configuration: AFOnboardingKitConfiguration = .init(),
         primaryProvider: AFOnboardingProvider,
         fallbackUI: (any AFOnboardingKitUI.Type)? = nil,
         eventHandler: AFOnboardingEventHandler? = nil
     ) {
         let fallback = fallbackUI.map { AFFallbackOnboardingProvider(uiType: $0) }
         configure(
-            configuration: configuration,
             primaryProvider: primaryProvider,
             fallbackProvider: fallback,
             eventHandler: eventHandler
         )
+    }
+
+    /// Full configuration with custom providers (advanced).
+    public static func configure(
+        primaryProvider: AFOnboardingProvider,
+        fallbackProvider: AFOnboardingProvider? = nil,
+        eventHandler: AFOnboardingEventHandler? = nil
+    ) {
+        let kit = AFOnboardingKit.shared
+        kit.primaryProvider = primaryProvider
+        kit.fallbackProvider = fallbackProvider
+        kit.eventHandler = eventHandler
+        kit.isSetup = true
     }
 
     // MARK: - Show
@@ -115,32 +113,24 @@ public final class AFOnboardingKit {
             return .failed(.notConfigured)
         }
 
-        // FIX #1: `force` was previously declared but never used.
-        // If user has already completed onboarding and force == false — return .skipped
-        // without showing any UI. This check is the main purpose of `hasCompleted`.
         guard force || !hasCompleted else {
             return .skipped
         }
 
-        // Check network — if unavailable, fallback immediately
-        let cfg = configuration!
         let hasNetwork: Bool
-
-        if cfg.skipNetworkCheck {
+        if Self.skipNetworkCheck {
             hasNetwork = true
         } else {
             hasNetwork = await AFNetworkReachability.shared.isAvailable()
         }
 
         let result: AFOnboardingResult
-
         if hasNetwork {
             result = await showWithPrimary(placementId: placementId, from: presenter)
         } else {
             result = await showFallback(placementId: placementId, from: presenter)
         }
 
-        // Persist and notify
         if result.isFinished {
             hasCompleted = true
         }
@@ -153,14 +143,11 @@ public final class AFOnboardingKit {
 
     private func showWithPrimary(placementId: String, from presenter: UIViewController) async -> AFOnboardingResult {
         guard let provider = primaryProvider else { return .failed(.notConfigured) }
-
         let result = await provider.present(placementId: placementId, from: presenter)
-
         // Fallback only on technical error — not on .completed/.skipped
         if case .failed = result {
             return await showFallback(placementId: placementId, from: presenter)
         }
-
         return result
     }
 
@@ -168,24 +155,17 @@ public final class AFOnboardingKit {
         guard let provider = fallbackProvider else {
             return .failed(.noFallbackUI)
         }
-        let result = await provider.present(placementId: placementId, from: presenter)
-        return result
+        return await provider.present(placementId: placementId, from: presenter)
     }
 
     private func handleResult(_ result: AFOnboardingResult, placementId: String) {
         switch result {
         case .completed:
             eventHandler?.onOnboardingCompleted(placementId: placementId)
-            // FIX #2: Notification now sent for both .completed and .skipped.
-            // Comment in Notification.Name said "after .completed or .skipped",
-            // but .skipped previously didn't send notification — listeners never knew.
             NotificationCenter.default.post(name: .onboardingKitCompleted, object: nil)
-
         case .skipped:
             eventHandler?.onOnboardingSkipped(placementId: placementId)
-            // FIX #2: added — symmetric to .completed.
             NotificationCenter.default.post(name: .onboardingKitCompleted, object: nil)
-
         case .failed(let error):
             eventHandler?.onOnboardingFailed(error: error, placementId: placementId)
         }
@@ -193,16 +173,13 @@ public final class AFOnboardingKit {
 
     // MARK: - Helpers
 
-    private var isConfigured: Bool {
-        configuration != nil && primaryProvider != nil
-    }
+    private var isConfigured: Bool { isSetup && primaryProvider != nil }
 }
 
 // MARK: - Notification Names
 
 public extension Notification.Name {
-    /// Sent after .completed or .skipped.
-    /// Listen to this notification to know when onboarding is finished in any scenario.
+    /// Sent after onboarding is finished (.completed or .skipped).
     ///
     /// ```swift
     /// NotificationCenter.default.addObserver(
