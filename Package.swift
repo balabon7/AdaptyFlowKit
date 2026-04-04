@@ -7,79 +7,46 @@ let package = Package(
         .iOS(.v16)
     ],
     products: [
-        // Main product - exports all three kits
         .library(
             name: "AdaptyFlowKit",
             targets: ["AdaptyFlowKit"]
         ),
-        // Individual products (if someone wants to use only one)
-        .library(
-            name: "OnboardingKit",
-            targets: ["OnboardingKit"]
-        ),
-        .library(
-            name: "PaywallKit",
-            targets: ["PaywallKit"]
-        ),
-        .library(
-            name: "RatingKit",
-            targets: ["RatingKit"]
-        ),
     ],
     dependencies: [
-        // AdaptyUI is bundled inside AdaptySDK-iOS since v3.x (AdaptyUI-iOS repo is archived at 2.x)
         .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS.git", from: "3.15.0"),
     ],
     targets: [
-        // Main module (re-exports all three)
+        // Single module — all kits in one target
         .target(
             name: "AdaptyFlowKit",
             dependencies: [
-                "OnboardingKit",
+                .product(name: "Adapty", package: "AdaptySDK-iOS"),
+                .product(name: "AdaptyUI", package: "AdaptySDK-iOS"),
+            ],
+            path: "Sources",
+            sources: [
+                "AdaptyFlowKit",
                 "PaywallKit",
-                "RatingKit"
+                "OnboardingKit",
+                "RatingKit",
             ]
         ),
-        
-        // OnboardingKit
-        .target(
-            name: "OnboardingKit",
-            dependencies: [
-                .product(name: "Adapty", package: "AdaptySDK-iOS"),
-                .product(name: "AdaptyUI", package: "AdaptySDK-iOS"),
-                "PaywallKit" // For AFAppFlowKit and shared types
-            ]
-        ),
-        
-        // PaywallKit
-        .target(
-            name: "PaywallKit",
-            dependencies: [
-                .product(name: "Adapty", package: "AdaptySDK-iOS"),
-                .product(name: "AdaptyUI", package: "AdaptySDK-iOS"),
-            ]
-        ),
-        
-        // RatingKit (minimal dependencies)
-        .target(
-            name: "RatingKit",
-            dependencies: [
-                "PaywallKit" // Only for AFPaywallKitLogger protocol
-            ]
-        ),
-        
+
         // Tests
         .testTarget(
-            name: "OnboardingKitTests",
-            dependencies: ["OnboardingKit"]
+            name: "PaywallKitTests",
+            dependencies: ["AdaptyFlowKit"],
+            path: "Tests/PaywallKitTests"
         ),
         .testTarget(
-            name: "PaywallKitTests",
-            dependencies: ["PaywallKit"]
+            name: "OnboardingKitTests",
+            dependencies: ["AdaptyFlowKit"],
+            path: "Tests/OnboardingKitTests"
         ),
         .testTarget(
             name: "RatingKitTests",
-            dependencies: ["RatingKit"]
+            dependencies: ["AdaptyFlowKit"],
+            path: "Tests/RatingKitTests"
         ),
     ]
 )
