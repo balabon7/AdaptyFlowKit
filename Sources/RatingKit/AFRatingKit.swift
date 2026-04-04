@@ -44,7 +44,6 @@ public final class AFRatingKit {
 
     private var configuration: AFRatingKitConfiguration = .init()
     private var eventHandler: AFRatingEventHandler?
-    private var logger: AFPaywallKitLogger = AFConsoleLogger()
 
     // MARK: - Configure
 
@@ -54,8 +53,6 @@ public final class AFRatingKit {
     ) {
         shared.configuration = configuration
         shared.eventHandler = eventHandler
-        shared.logger = configuration.logger ?? AFConsoleLogger()
-        shared.log("Configured. appName: \(configuration.appName)", level: .info)
     }
 
     // MARK: - Public API
@@ -70,24 +67,15 @@ public final class AFRatingKit {
         from presenter: UIViewController,
         force: Bool = false
     ) async -> AFRatingResult {
-        print("🎯 [RatingKit] requestIfNeeded() called from \(type(of: presenter))")
-        
         guard force || shouldShowPrompt() else {
-            print("⏸️ [RatingKit] Throttled — skipping prompt")
-            log("Throttled — skipping prompt.", level: .debug)
             return .throttled
         }
-
-        print("✅ [RatingKit] Showing rating prompt...")
-        let result = await showPrompt(from: presenter)
-        print("🏁 [RatingKit] Rating prompt finished with result: \(result)")
-        return result
+        return await showPrompt(from: presenter)
     }
 
     /// Resets all statistics. For testing.
     public func resetState() {
         storage.reset()
-        log("State reset.", level: .debug)
     }
 
     // MARK: - Throttle
@@ -99,10 +87,7 @@ public final class AFRatingKit {
         // 2. Minimum interval between prompts
         if let lastDate = storage.lastPromptDate {
             let daysSince = Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
-            guard daysSince >= configuration.minDaysBetweenPrompts else {
-                log("Only \(daysSince) days since last prompt (min: \(configuration.minDaysBetweenPrompts)).", level: .debug)
-                return false
-            }
+            guard daysSince >= configuration.minDaysBetweenPrompts else { return false }
         }
 
         return true
@@ -111,26 +96,20 @@ public final class AFRatingKit {
     // MARK: - Show
 
     private func showPrompt(from presenter: UIViewController) async -> AFRatingResult {
-        print("📱 [RatingKit] Creating rating prompt view controller...")
-        
         let result = await withCheckedContinuation { (continuation: CheckedContinuation<AFRatingResult, Never>) in
             let sink = AFSingleFireContinuation(continuation)
             let vc = AFRatingPromptViewController(
                 configuration: configuration,
                 accentColor: AFAppearance.accentColor,
                 onResult: { result in
-                    print("📊 [RatingKit] User chose: \(result)")
                     sink.resume(with: result)
                 }
             )
             vc.modalPresentationStyle = .overFullScreen
             vc.modalTransitionStyle = .crossDissolve
-            
-            print("🎬 [RatingKit] Presenting rating prompt...")
             presenter.present(vc, animated: false)
         }
 
-        print("✅ [RatingKit] Rating prompt completed with: \(result)")
         handleResult(result)
         return result
     }
@@ -142,14 +121,12 @@ public final class AFRatingKit {
 
         switch result {
         case .positive:
-            log("✅ User is happy — requesting Apple review.", level: .info)
             storage.setHasRated(for: version)
             storage.lastPromptDate = Date()
             requestAppleReview()
             eventHandler?.onPositiveFeedback()
 
         case .negative:
-            log("User is unhappy — opening feedback URL.", level: .info)
             storage.lastPromptDate = Date()
             if let url = configuration.negativeFeedbackURL {
                 UIApplication.shared.open(url)
@@ -157,7 +134,6 @@ public final class AFRatingKit {
             eventHandler?.onNegativeFeedback()
 
         case .dismissed:
-            log("Prompt dismissed.", level: .debug)
             // DON'T save statistics on dismiss - user just closed without choosing
             // This will allow showing rating again on next launch
             eventHandler?.onDismissed()
@@ -185,10 +161,6 @@ public final class AFRatingKit {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
     }
 
-    private func log(_ message: String, level: AFPaywallKitLogLevel) {
-        logger.log("[RatingKit] \(message)", level: level)
-    }
-
     // MARK: - Storage
 
     private let storage = AFRatingStorage()
@@ -208,19 +180,14 @@ public struct AFRatingKitConfiguration: Sendable {
     /// If `nil` — just dismiss without action.
     public let negativeFeedbackURL: URL?
 
-    /// Logger — the same as in PaywallKit.
-    public let logger: AFPaywallKitLogger?
-
     nonisolated public init(
         appName: String = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "App",
         minDaysBetweenPrompts: Int = 30,
-        negativeFeedbackURL: URL? = nil,
-        logger: AFPaywallKitLogger? = nil
+        negativeFeedbackURL: URL? = nil
     ) {
         self.appName = appName
         self.minDaysBetweenPrompts = minDaysBetweenPrompts
         self.negativeFeedbackURL = negativeFeedbackURL
-        self.logger = logger
     }
 }
 
@@ -252,8 +219,8 @@ public extension AFRatingEventHandler {
 private final class AFRatingStorage {
 
     private enum Keys {
-        static let lastPromptDate     = "RatingKit.lastPromptDate"
-        static let ratedVersions      = "RatingKit.ratedVersions"      // [String]
+        static let lastPromptDate = "RatingKit.lastPromptDate"
+        static let ratedVersions  = "RatingKit.ratedVersions"   // [String]
     }
 
     private let defaults = UserDefaults.standard

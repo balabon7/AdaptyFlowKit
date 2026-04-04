@@ -21,7 +21,7 @@ public final class AFSingleFireContinuation<T> {
     private var continuation: CheckedContinuation<T, Never>?
     nonisolated(unsafe) private var isConsumed = false
 
-    init(_ continuation: CheckedContinuation<T, Never>) {
+    public init(_ continuation: CheckedContinuation<T, Never>) {
         self.continuation = continuation
     }
 

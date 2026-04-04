@@ -72,7 +72,6 @@ public final class AFOnboardingKit {
         kit.fallbackProvider = fallbackProvider
         kit.eventHandler = eventHandler
         kit.logger = configuration.logger ?? AFConsoleLogger()
-        kit.log("Configured. Primary: \(type(of: primaryProvider))", level: .info)
     }
 
     /// Convenient configuration — pass your class as fallback UI.
@@ -113,7 +112,6 @@ public final class AFOnboardingKit {
         force: Bool = false
     ) async -> AFOnboardingResult {
         guard isConfigured else {
-            log("show() called before configure().", level: .error)
             return .failed(.notConfigured)
         }
 
@@ -121,7 +119,6 @@ public final class AFOnboardingKit {
         // If user has already completed onboarding and force == false — return .skipped
         // without showing any UI. This check is the main purpose of `hasCompleted`.
         guard force || !hasCompleted else {
-            log("Already completed — skipping. Use force: true to override.", level: .debug)
             return .skipped
         }
 
@@ -135,14 +132,11 @@ public final class AFOnboardingKit {
             hasNetwork = await AFNetworkReachability.shared.isAvailable()
         }
 
-        log("Network: \(hasNetwork ? "✓" : "✗"), placement: \(placementId)", level: .debug)
-
         let result: AFOnboardingResult
 
         if hasNetwork {
             result = await showWithPrimary(placementId: placementId, from: presenter)
         } else {
-            log("No network — going directly to fallback.", level: .info)
             result = await showFallback(placementId: placementId, from: presenter)
         }
 
@@ -164,7 +158,6 @@ public final class AFOnboardingKit {
 
         // Fallback only on technical error — not on .completed/.skipped
         if case .failed = result {
-            log("Primary failed — switching to fallback.", level: .warning)
             return await showFallback(placementId: placementId, from: presenter)
         }
 
@@ -173,19 +166,15 @@ public final class AFOnboardingKit {
 
     private func showFallback(placementId: String, from presenter: UIViewController) async -> AFOnboardingResult {
         guard let provider = fallbackProvider else {
-            log("❌ No fallback provider registered.", level: .error)
             return .failed(.noFallbackUI)
         }
-        log("🔄 Showing fallback provider: \(type(of: provider))", level: .info)
         let result = await provider.present(placementId: placementId, from: presenter)
-        log("✅ Fallback provider finished with result: \(result)", level: .info)
         return result
     }
 
     private func handleResult(_ result: AFOnboardingResult, placementId: String) {
         switch result {
         case .completed:
-            log("✅ Onboarding completed.", level: .info)
             eventHandler?.onOnboardingCompleted(placementId: placementId)
             // FIX #2: Notification now sent for both .completed and .skipped.
             // Comment in Notification.Name said "after .completed or .skipped",
@@ -193,13 +182,11 @@ public final class AFOnboardingKit {
             NotificationCenter.default.post(name: .onboardingKitCompleted, object: nil)
 
         case .skipped:
-            log("↩️ Onboarding skipped.", level: .info)
             eventHandler?.onOnboardingSkipped(placementId: placementId)
             // FIX #2: added — symmetric to .completed.
             NotificationCenter.default.post(name: .onboardingKitCompleted, object: nil)
 
         case .failed(let error):
-            log("❌ \(error.localizedDescription)", level: .error)
             eventHandler?.onOnboardingFailed(error: error, placementId: placementId)
         }
     }
@@ -208,10 +195,6 @@ public final class AFOnboardingKit {
 
     private var isConfigured: Bool {
         configuration != nil && primaryProvider != nil
-    }
-
-    private func log(_ message: String, level: AFPaywallKitLogLevel) {
-        logger.log("[OnboardingKit] \(message)", level: level)
     }
 }
 
