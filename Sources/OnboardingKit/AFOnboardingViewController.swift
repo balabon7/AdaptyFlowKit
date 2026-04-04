@@ -220,19 +220,19 @@ final class AFOnboardingViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("[AFOnboardingViewController] 🎬 viewDidLoad - pages count: \(pages.count)")
+        print("[AFOnboardingViewController]  viewDidLoad - pages count: \(pages.count)")
         setupUI()
         setupGestures()
         configure(with: pages[currentIndex], animated: false, direction: .forward)
-        print("[AFOnboardingViewController] ✅ Setup complete")
+        print("[AFOnboardingViewController]  Setup complete")
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("[AFOnboardingViewController] 👁️ viewDidAppear - controller is visible")
-        print("[AFOnboardingViewController] 📱 View frame: \(view.frame)")
-        print("[AFOnboardingViewController] 🔍 View subviews count: \(view.subviews.count)")
-        print("[AFOnboardingViewController] 🎨 View background: \(view.backgroundColor?.description ?? "nil")")
+        print("[AFOnboardingViewController]  viewDidAppear - controller is visible")
+        print("[AFOnboardingViewController]  View frame: \(view.frame)")
+        print("[AFOnboardingViewController]  View subviews count: \(view.subviews.count)")
+        print("[AFOnboardingViewController]  View background: \(view.backgroundColor?.description ?? "nil")")
         
         // Debug: List all subviews
         for (index, subview) in view.subviews.enumerated() {
@@ -513,37 +513,37 @@ final class AFOnboardingViewController: UIViewController {
 
     private func goToNext() {
         guard !isAnimating else { 
-            print("[AFOnboardingViewController] ⏸️ goToNext blocked - animation in progress")
+            print("[AFOnboardingViewController]  goToNext blocked - animation in progress")
             return 
         }
         guard currentIndex < pages.count - 1 else { 
-            print("[AFOnboardingViewController] ✅ Last page reached - calling finish()")
+            print("[AFOnboardingViewController]  Last page reached - calling finish()")
             finish()
             return 
         }
-        print("[AFOnboardingViewController] ➡️ Going to next page: \(currentIndex) -> \(currentIndex + 1)")
+        print("[AFOnboardingViewController]  Going to next page: \(currentIndex) -> \(currentIndex + 1)")
         currentIndex += 1
         configure(with: pages[currentIndex], animated: true, direction: .forward)
     }
 
     private func goToPrevious() {
         guard !isAnimating, currentIndex > 0 else { return }
-        print("[AFOnboardingViewController] ⬅️ Going to previous page: \(currentIndex) -> \(currentIndex - 1)")
+        print("[AFOnboardingViewController]  Going to previous page: \(currentIndex) -> \(currentIndex - 1)")
         currentIndex -= 1
         configure(with: pages[currentIndex], animated: true, direction: .backward)
     }
 
     private func finish() {
-        print("[AFOnboardingViewController] 🏁 finish() called - notifying completion handler")
-        print("[AFOnboardingViewController] 🔍 onCompletion callback exists: \(onCompletion != nil)")
+        print("[AFOnboardingViewController]  finish() called - notifying completion handler")
+        print("[AFOnboardingViewController]  onCompletion callback exists: \(onCompletion != nil)")
         onCompletion?()
-        print("[AFOnboardingViewController] ✅ onCompletion callback invoked")
+        print("[AFOnboardingViewController]  onCompletion callback invoked")
     }
 
     // MARK: - Actions
 
     @objc private func primaryButtonTapped() {
-        print("[AFOnboardingViewController] 🔘 Primary button tapped - current page: \(currentIndex)")
+        print("[AFOnboardingViewController]  Primary button tapped - current page: \(currentIndex)")
         animateButtonPress(primaryButton)
         
         // Call optional action for current page
@@ -553,12 +553,12 @@ final class AFOnboardingViewController: UIViewController {
     }
 
     @objc private func backButtonTapped() {
-        print("[AFOnboardingViewController] ◀️ Back button tapped")
+        print("[AFOnboardingViewController]  Back button tapped")
         goToPrevious()
     }
 
     @objc private func skipTapped() {
-        print("[AFOnboardingViewController] ⏭️ Skip button tapped")
+        print("[AFOnboardingViewController]  Skip button tapped")
         finish()
     }
 

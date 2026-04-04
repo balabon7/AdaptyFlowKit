@@ -37,11 +37,11 @@ public final class AFAdaptyProvider: AFPaywallProvider {
         from presenter: UIViewController
     ) async -> AFPaywallResult {
         let startTime = CFAbsoluteTimeGetCurrent()
-        print("⏱️ [AdaptyProvider] present() started for placementId: \(placementId)")
+        print(" [AdaptyProvider] present() started for placementId: \(placementId)")
         
         do {
             // 1. Load paywall and products in parallel where possible
-            print("⏱️ [AdaptyProvider] Fetching paywall from Adapty...")
+            print(" [AdaptyProvider] Fetching paywall from Adapty...")
             let paywallStartTime = CFAbsoluteTimeGetCurrent()
             
             let paywall = try await withTimeout(fetchTimeout) {
@@ -49,9 +49,9 @@ public final class AFAdaptyProvider: AFPaywallProvider {
             }
             
             let paywallDuration = CFAbsoluteTimeGetCurrent() - paywallStartTime
-            print("⏱️ [AdaptyProvider] Paywall fetch took: \(String(format: "%.2f", paywallDuration))s")
+            print(" [AdaptyProvider] Paywall fetch took: \(String(format: "%.2f", paywallDuration))s")
 
-            print("⏱️ [AdaptyProvider] Fetching products...")
+            print(" [AdaptyProvider] Fetching products...")
             let productsStartTime = CFAbsoluteTimeGetCurrent()
             
             let products = try await withTimeout(fetchTimeout) {
@@ -59,10 +59,10 @@ public final class AFAdaptyProvider: AFPaywallProvider {
             }
             
             let productsDuration = CFAbsoluteTimeGetCurrent() - productsStartTime
-            print("⏱️ [AdaptyProvider] Products fetch took: \(String(format: "%.2f", productsDuration))s")
+            print(" [AdaptyProvider] Products fetch took: \(String(format: "%.2f", productsDuration))s")
 
             // 2. Build configuration
-            print("⏱️ [AdaptyProvider] Building paywall configuration...")
+            print(" [AdaptyProvider] Building paywall configuration...")
             let configStartTime = CFAbsoluteTimeGetCurrent()
             
             let configuration = try await AdaptyUI.getPaywallConfiguration(
@@ -76,28 +76,28 @@ public final class AFAdaptyProvider: AFPaywallProvider {
             )
             
             let configDuration = CFAbsoluteTimeGetCurrent() - configStartTime
-            print("⏱️ [AdaptyProvider] Configuration build took: \(String(format: "%.2f", configDuration))s")
+            print(" [AdaptyProvider] Configuration build took: \(String(format: "%.2f", configDuration))s")
 
             // 3. Show UI via continuation
-            print("⏱️ [AdaptyProvider] Showing paywall controller...")
+            print(" [AdaptyProvider] Showing paywall controller...")
             let showStartTime = CFAbsoluteTimeGetCurrent()
             
             let result = await showController(configuration: configuration, from: presenter)
             
             let showDuration = CFAbsoluteTimeGetCurrent() - showStartTime
             let totalDuration = CFAbsoluteTimeGetCurrent() - startTime
-            print("⏱️ [AdaptyProvider] Showing controller took: \(String(format: "%.2f", showDuration))s")
-            print("⏱️ [AdaptyProvider] Total present() duration: \(String(format: "%.2f", totalDuration))s")
+            print(" [AdaptyProvider] Showing controller took: \(String(format: "%.2f", showDuration))s")
+            print(" [AdaptyProvider] Total present() duration: \(String(format: "%.2f", totalDuration))s")
             
             return result
 
         } catch let error as AFPaywallKitError {
             let totalDuration = CFAbsoluteTimeGetCurrent() - startTime
-            print("❌ [AdaptyProvider] Failed with AFPaywallKitError after \(String(format: "%.2f", totalDuration))s: \(error)")
+            print(" [AdaptyProvider] Failed with AFPaywallKitError after \(String(format: "%.2f", totalDuration))s: \(error)")
             return .failed(error)
         } catch {
             let totalDuration = CFAbsoluteTimeGetCurrent() - startTime
-            print("❌ [AdaptyProvider] Failed with error after \(String(format: "%.2f", totalDuration))s: \(error)")
+            print(" [AdaptyProvider] Failed with error after \(String(format: "%.2f", totalDuration))s: \(error)")
             return .failed(.providerError(error))
         }
     }
@@ -109,13 +109,13 @@ public final class AFAdaptyProvider: AFPaywallProvider {
         configuration: AdaptyUI.PaywallConfiguration,
         from presenter: UIViewController
     ) async -> AFPaywallResult {
-        print("⏱️ [AdaptyProvider] showController() started")
+        print(" [AdaptyProvider] showController() started")
         
         // UIViewController.present() silently fails if presenter is not in the window hierarchy
         // (only logs to console, no throw/callback) — continuation will hang forever.
         // Therefore we check in advance and return .failed so PaywallKit can go to fallback.
         guard presenter.view.window != nil else {
-            print("❌ [AdaptyProvider] Presenter is not in window hierarchy!")
+            print(" [AdaptyProvider] Presenter is not in window hierarchy!")
             return .failed(.providerError(
                 NSError(
                     domain: "PaywallKit",
@@ -136,7 +136,7 @@ public final class AFAdaptyProvider: AFPaywallProvider {
             )
 
             do {
-                print("⏱️ [AdaptyProvider] Creating paywall controller...")
+                print(" [AdaptyProvider] Creating paywall controller...")
                 let controllerStartTime = CFAbsoluteTimeGetCurrent()
                 
                 let controller = try AdaptyUI.paywallController(
@@ -146,22 +146,22 @@ public final class AFAdaptyProvider: AFPaywallProvider {
                 )
                 
                 let controllerDuration = CFAbsoluteTimeGetCurrent() - controllerStartTime
-                print("⏱️ [AdaptyProvider] Controller creation took: \(String(format: "%.2f", controllerDuration))s")
+                print(" [AdaptyProvider] Controller creation took: \(String(format: "%.2f", controllerDuration))s")
                 
                 controller.modalPresentationStyle = .fullScreen
 
                 // Attach delegate to controller — safely, without objc_setAssociatedObject
                 delegate.retain(on: controller)
 
-                print("⏱️ [AdaptyProvider] Presenting controller...")
+                print(" [AdaptyProvider] Presenting controller...")
                 let presentStartTime = CFAbsoluteTimeGetCurrent()
                 
                 presenter.present(controller, animated: true) {
                     let presentDuration = CFAbsoluteTimeGetCurrent() - presentStartTime
-                    print("⏱️ [AdaptyProvider] Controller presentation animation took: \(String(format: "%.2f", presentDuration))s")
+                    print(" [AdaptyProvider] Controller presentation animation took: \(String(format: "%.2f", presentDuration))s")
                 }
             } catch {
-                print("❌ [AdaptyProvider] Failed to create controller: \(error)")
+                print(" [AdaptyProvider] Failed to create controller: \(error)")
                 completionHandler.resume(with: .failed(.providerError(error)))
             }
         }
@@ -293,11 +293,11 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
     ) {
         switch action {
         case .close:
-            print("🔙 [AdaptyProvider] User closed paywall")
+            print(" [AdaptyProvider] User closed paywall")
             dismiss(controller) { self.completion.resume(with: .cancelled) }
 
         case .openURL(let url):
-            print("🔗 [AdaptyProvider] Opening URL: \(url)")
+            print(" [AdaptyProvider] Opening URL: \(url)")
             guard UIApplication.shared.canOpenURL(url) else { return }
             UIApplication.shared.open(url)
 
@@ -326,11 +326,11 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
 
     func paywallControllerDidAppear(_ controller: AdaptyPaywallController) {
         let duration = CFAbsoluteTimeGetCurrent() - startTime
-        print("✅ [AdaptyProvider] Paywall appeared on screen after \(String(format: "%.2f", duration))s from showController() start")
+        print(" [AdaptyProvider] Paywall appeared on screen after \(String(format: "%.2f", duration))s from showController() start")
     }
     
     func paywallControllerDidDisappear(_ controller: AdaptyPaywallController) {
-        print("👋 [AdaptyProvider] Paywall disappeared from screen")
+        print(" [AdaptyProvider] Paywall disappeared from screen")
     }
     func paywallController(_ controller: AdaptyPaywallController, didSelectProduct product: AdaptyPaywallProductWithoutDeterminingOffer) {}
     func paywallController(_ controller: AdaptyPaywallController, didStartPurchase product: AdaptyPaywallProduct) {}

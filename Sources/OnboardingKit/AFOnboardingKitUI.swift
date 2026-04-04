@@ -75,7 +75,7 @@ public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
 
     public init(uiType: any AFOnboardingKitUI.Type) {
         self.uiType = uiType
-        print("[AFFallbackOnboardingProvider] 🏗️ Initialized with UI type: \(uiType)")
+        print("[AFFallbackOnboardingProvider]  Initialized with UI type: \(uiType)")
     }
 
     @MainActor
@@ -83,8 +83,8 @@ public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
         placementId: String,
         from presenter: UIViewController
     ) async -> AFOnboardingResult {
-        print("[AFFallbackOnboardingProvider] 🎬 present() called - placementId: \(placementId)")
-        print("[AFFallbackOnboardingProvider] 📍 Presenter: \(type(of: presenter))")
+        print("[AFFallbackOnboardingProvider]  present() called - placementId: \(placementId)")
+        print("[AFFallbackOnboardingProvider]  Presenter: \(type(of: presenter))")
         
         return await withCheckedContinuation { continuation in
             let sink = AFSingleFireContinuation(continuation)
@@ -92,19 +92,19 @@ public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
             let context = AFOnboardingUIContext(
                 placementId: placementId,
                 complete: { 
-                    print("[AFFallbackOnboardingProvider] ✅ Context complete() called")
+                    print("[AFFallbackOnboardingProvider]  Context complete() called")
                     sink.resume(with: .completed) 
                 },
                 skip: { 
-                    print("[AFFallbackOnboardingProvider] ⏭️ Context skip() called")
+                    print("[AFFallbackOnboardingProvider]  Context skip() called")
                     sink.resume(with: .skipped) 
                 }
             )
 
-            print("[AFFallbackOnboardingProvider] 🔨 Creating controller from UI type...")
+            print("[AFFallbackOnboardingProvider]  Creating controller from UI type...")
             let controller = uiType.make(context: context)
             controller.modalPresentationStyle = .fullScreen
-            print("[AFFallbackOnboardingProvider] ✅ Controller created: \(type(of: controller))")
+            print("[AFFallbackOnboardingProvider]  Controller created: \(type(of: controller))")
 
             // Attach context (and sink) to controller
             objc_setAssociatedObject(
@@ -114,14 +114,14 @@ public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
 
-            print("[AFFallbackOnboardingProvider] 🚀 Presenting controller...")
-            print("[AFFallbackOnboardingProvider] 🔍 Presenter view: \(presenter.view.frame), window: \(presenter.view.window != nil)")
+            print("[AFFallbackOnboardingProvider]  Presenting controller...")
+            print("[AFFallbackOnboardingProvider]  Presenter view: \(presenter.view.frame), window: \(presenter.view.window != nil)")
             presenter.present(controller, animated: true) {
-                print("[AFFallbackOnboardingProvider] ✅ Controller presented successfully")
-                print("[AFFallbackOnboardingProvider] 🔍 Presented controller: \(presenter.presentedViewController != nil ? "✓" : "✗")")
+                print("[AFFallbackOnboardingProvider]  Controller presented successfully")
+                print("[AFFallbackOnboardingProvider]  Presented controller: \(presenter.presentedViewController != nil ? "" : "")")
                 if let presented = presenter.presentedViewController {
-                    print("[AFFallbackOnboardingProvider] 📱 Presented VC type: \(type(of: presented))")
-                    print("[AFFallbackOnboardingProvider] 📱 Presented VC frame: \(presented.view.frame)")
+                    print("[AFFallbackOnboardingProvider]  Presented VC type: \(type(of: presented))")
+                    print("[AFFallbackOnboardingProvider]  Presented VC frame: \(presented.view.frame)")
                 }
             }
         }

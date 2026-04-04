@@ -178,7 +178,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         // and we haven't called close() yet, call it now
         if isBeingDismissed && !didClose {
             didClose = true
-            print("🚪 [Paywall] Dismissed via isBeingDismissed")
+            print(" [Paywall] Dismissed via isBeingDismissed")
             context.close()
         }
     }
@@ -189,7 +189,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         // Called when user dismisses via gesture (swipe down)
         if !didClose {
             didClose = true
-            print("🚪 [Paywall] Dismissed via swipe gesture")
+            print(" [Paywall] Dismissed via swipe gesture")
             context.close()
         }
     }
@@ -337,7 +337,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     @objc private func closeTapped() {
         didClose = true
-        print("🚪 [Paywall] User tapped close button")
+        print(" [Paywall] User tapped close button")
         context.close()
     }
 

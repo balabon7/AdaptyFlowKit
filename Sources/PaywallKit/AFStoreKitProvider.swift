@@ -192,7 +192,7 @@ public final class AFPaywallKitUIFactory: AFStoreKitPaywallFactory {
         //    Safe alternative to UIApplication.topViewController.
         weak var controllerRef: UIViewController?
 
-        // 3. Context — single point of contact SDK ↔ VC.
+        // 3. Context — single point of contact SDK  VC.
         //    Three closures instead of three delegate methods.
         let ctx = AFPaywallUIContext(
             products: paywallProducts,
