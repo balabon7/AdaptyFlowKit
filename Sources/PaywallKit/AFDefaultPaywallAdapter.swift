@@ -8,7 +8,7 @@ import UIKit
 
 // MARK: - DefaultPaywallAdapter
 
-final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UIAdaptivePresentationControllerDelegate, UISheetPresentationControllerDelegate {
+public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UIAdaptivePresentationControllerDelegate, UISheetPresentationControllerDelegate {
 
     // MARK: - Static Configuration
     //

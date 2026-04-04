@@ -11,9 +11,9 @@ import StoreKit
 
 /// Service for checking subscription status.
 @MainActor
-final class AFSubscriptionService: AFSubscriptionValidator {
+public final class AFSubscriptionService: AFSubscriptionValidator {
 
-    static let shared = AFSubscriptionService()
+    public static let shared = AFSubscriptionService()
     private init() {}
     
     // MARK: - Adapty Profile (optional)
@@ -71,7 +71,7 @@ final class AFSubscriptionService: AFSubscriptionValidator {
 extension AFSubscriptionService: AFProfileApplicable {
     
     /// Updates the cached profile after purchase through Adapty.
-    func apply(profile: AdaptyProfile) {
+    public func apply(profile: AdaptyProfile) {
         cachedProfile = profile
         
         let isPremium = profile.accessLevels["premium"]?.isActive == true
