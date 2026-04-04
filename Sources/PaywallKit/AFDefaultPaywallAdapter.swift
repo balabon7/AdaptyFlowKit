@@ -30,7 +30,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     // FIX #1: Added @MainActor — required by AFPaywallKitUI protocol.
     // Without it Swift 6 strict concurrency produces compile error.
     @MainActor
-    static func make(context: AFPaywallUIContext) -> UIViewController {
+    public static func make(context: AFPaywallUIContext) -> UIViewController {
         let vc = AFDefaultPaywallAdapter()
         vc.context = context
 
@@ -163,7 +163,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     // MARK: - Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
         setupLayout()
         buildPlanButtons()
@@ -171,7 +171,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         observeState()
     }
 
-    override func viewDidDisappear(_ animated: Bool) {
+    public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
 
         // If view controller is being dismissed (swipe down or other method)
@@ -185,7 +185,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     // MARK: - UIAdaptivePresentationControllerDelegate
 
-    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    public func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
         // Called when user dismisses via gesture (swipe down)
         if !didClose {
             didClose = true
