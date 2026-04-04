@@ -81,36 +81,6 @@ extension AFPaywallKitError: Equatable {
     }
 }
 
-// MARK: - AFPaywallKitConfiguration
-
-/// SDK configuration. Passed once during initialization.
-public struct AFPaywallKitConfiguration: Sendable {
-
-    /// Product IDs for StoreKit fallback.
-    public let productIds: [String]
-
-    /// Timeout for provider network requests.
-    public let fetchTimeout: TimeInterval
-
-    /// Accent color for paywall UI (default .systemBlue).
-    public let accentColor: UIColor
-
-    /// Logger. Replaces default `print`-based.
-    public let logger: AFPaywallKitLogger?
-
-    public init(
-        productIds: [String],
-        fetchTimeout: TimeInterval = 15.0,
-        accentColor: UIColor = .systemBlue,
-        logger: AFPaywallKitLogger? = nil
-    ) {
-        self.productIds = productIds
-        self.fetchTimeout = fetchTimeout
-        self.accentColor = accentColor
-        self.logger = logger
-    }
-}
-
 // MARK: - AFPaywallKitLogger
 
 /// Logger protocol. Substitute any tool: OSLog, Firebase, custom.
