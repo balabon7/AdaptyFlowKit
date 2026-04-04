@@ -20,38 +20,54 @@ import StoreKit
 ///
 /// **Usage:**
 /// ```swift
-/// // AppDelegate
-/// RatingKit.configure(
-///     configuration: .init(
-///         appName: "PDF Editor",
-///         minDaysBetweenPrompts: 14,
-///         negativeFeedbackURL: URL(string: "mailto:support@app.com")
-///     )
-/// )
+/// // AppDelegate — configure via static properties, then call configure()
+/// AFRatingKit.appName = "My App"
+/// AFRatingKit.minDaysBetweenPrompts = 14
+/// AFRatingKit.negativeFeedbackURL = URL(string: "mailto:support@app.com")
+/// AFRatingKit.configure()
 ///
 /// // After successful user action
-/// RatingKit.shared.requestIfNeeded(from: self)
+/// await AFRatingKit.shared.requestIfNeeded(from: self)
 /// ```
 @MainActor
 public final class AFRatingKit {
+
+    // MARK: - Global Configuration Properties
+
+    /// App name displayed in the pre-prompt dialog.
+    /// Default: CFBundleName from Info.plist.
+    public static var appName: String =
+        Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "App"
+
+    /// Minimum number of days between consecutive prompts.
+    /// Default: 30 days.
+    public static var minDaysBetweenPrompts: Int = 30
+
+    /// URL opened when the user gives negative feedback.
+    /// Example: `URL(string: "mailto:support@app.com")`
+    /// If `nil` — silently dismissed.
+    public static var negativeFeedbackURL: URL? = nil
 
     // MARK: - Singleton
 
     public static let shared = AFRatingKit()
     private init() {}
 
-    // MARK: - State
+    // MARK: - Internal State
 
     private var configuration: AFRatingKitConfiguration = .init()
     private var eventHandler: AFRatingEventHandler?
 
     // MARK: - Configure
 
-    public static func configure(
-        configuration: AFRatingKitConfiguration = .init(),
-        eventHandler: AFRatingEventHandler? = nil
-    ) {
-        shared.configuration = configuration
+    /// Applies current static properties and activates RatingKit.
+    /// Call this after setting `appName`, `minDaysBetweenPrompts`, etc.
+    public static func configure(eventHandler: AFRatingEventHandler? = nil) {
+        shared.configuration = AFRatingKitConfiguration(
+            appName: appName,
+            minDaysBetweenPrompts: minDaysBetweenPrompts,
+            negativeFeedbackURL: negativeFeedbackURL
+        )
         shared.eventHandler = eventHandler
     }
 
@@ -73,7 +89,7 @@ public final class AFRatingKit {
         return await showPrompt(from: presenter)
     }
 
-    /// Resets all statistics. For testing.
+    /// Resets all stored statistics. For testing.
     public func resetState() {
         storage.reset()
     }
@@ -81,10 +97,8 @@ public final class AFRatingKit {
     // MARK: - Throttle
 
     private func shouldShowPrompt() -> Bool {
-        // 1. User already clicked "Like" and we already showed Apple prompt
         if storage.hasRatedThisVersion { return false }
 
-        // 2. Minimum interval between prompts
         if let lastDate = storage.lastPromptDate {
             let daysSince = Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
             guard daysSince >= configuration.minDaysBetweenPrompts else { return false }
@@ -101,9 +115,7 @@ public final class AFRatingKit {
             let vc = AFRatingPromptViewController(
                 configuration: configuration,
                 accentColor: AFAppearance.accentColor,
-                onResult: { result in
-                    sink.resume(with: result)
-                }
+                onResult: { sink.resume(with: $0) }
             )
             vc.modalPresentationStyle = .overFullScreen
             vc.modalTransitionStyle = .crossDissolve
@@ -114,14 +126,12 @@ public final class AFRatingKit {
         return result
     }
 
-    // MARK: - Handle result
+    // MARK: - Handle Result
 
     private func handleResult(_ result: AFRatingResult) {
-        let version = appVersion
-
         switch result {
         case .positive:
-            storage.setHasRated(for: version)
+            storage.setHasRated(for: appVersion)
             storage.lastPromptDate = Date()
             requestAppleReview()
             eventHandler?.onPositiveFeedback()
@@ -134,8 +144,7 @@ public final class AFRatingKit {
             eventHandler?.onNegativeFeedback()
 
         case .dismissed:
-            // DON'T save statistics on dismiss - user just closed without choosing
-            // This will allow showing rating again on next launch
+            // Don't save stats on dismiss — allow showing again on next launch
             eventHandler?.onDismissed()
 
         case .throttled:
@@ -166,21 +175,14 @@ public final class AFRatingKit {
     private let storage = AFRatingStorage()
 }
 
-// MARK: - AFRatingKitConfiguration
+// MARK: - AFRatingKitConfiguration (internal)
 
-public struct AFRatingKitConfiguration: Sendable {
+struct AFRatingKitConfiguration {
+    let appName: String
+    let minDaysBetweenPrompts: Int
+    let negativeFeedbackURL: URL?
 
-    /// App name — displayed in pre-prompt.
-    public let appName: String
-
-    /// Minimum days between pre-prompt displays. Default: 30.
-    public let minDaysBetweenPrompts: Int
-
-    /// URL for unhappy users. For example: mailto:support@app.com
-    /// If `nil` — just dismiss without action.
-    public let negativeFeedbackURL: URL?
-
-    nonisolated public init(
+    init(
         appName: String = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "App",
         minDaysBetweenPrompts: Int = 30,
         negativeFeedbackURL: URL? = nil
@@ -214,13 +216,13 @@ public extension AFRatingEventHandler {
     func onDismissed()        {}
 }
 
-// MARK: - AFRatingStorage (internal)
+// MARK: - AFRatingStorage (private)
 
 private final class AFRatingStorage {
 
     private enum Keys {
         static let lastPromptDate = "RatingKit.lastPromptDate"
-        static let ratedVersions  = "RatingKit.ratedVersions"   // [String]
+        static let ratedVersions  = "RatingKit.ratedVersions"
     }
 
     private let defaults = UserDefaults.standard
