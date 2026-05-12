@@ -65,7 +65,7 @@ public final class AFOnboardingUIContext {
 
 /// Provider that shows a custom `AFOnboardingKitUI` ViewController.
 /// Used as fallback when Adapty is unavailable or fails.
-public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
+public final class AFFallbackOnboardingProvider: AFOnboardingProvider, AFRootOnboardingProvider {
 
     private let uiType: any AFOnboardingKitUI.Type
 
@@ -99,6 +99,35 @@ public final class AFFallbackOnboardingProvider: AFOnboardingProvider {
             )
 
             presenter.present(controller, animated: true)
+        }
+    }
+
+    @MainActor
+    public func presentAsRoot(
+        placementId: String,
+        in window: UIWindow
+    ) async -> AFOnboardingResult {
+        return await withCheckedContinuation { continuation in
+            let sink = AFSingleFireContinuation(continuation)
+
+            let context = AFOnboardingUIContext(
+                placementId: placementId,
+                complete: { sink.resume(with: .completed) },
+                skip: { sink.resume(with: .skipped) }
+            )
+
+            let controller = uiType.make(context: context)
+            controller.modalPresentationStyle = .fullScreen
+
+            objc_setAssociatedObject(
+                controller,
+                &AFFallbackOnboardingProvider.contextKey,
+                context,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+
+            window.rootViewController = controller
+            window.makeKeyAndVisible()
         }
     }
 

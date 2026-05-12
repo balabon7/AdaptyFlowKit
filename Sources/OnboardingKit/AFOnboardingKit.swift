@@ -139,6 +139,52 @@ public final class AFOnboardingKit {
         return result
     }
 
+    /// Shows onboarding by replacing `window.rootViewController`.
+    /// Automatically falls back on primary failure and preserves `hasCompleted`.
+    ///
+    /// Use this when onboarding should look like the first app screen instead of
+    /// a modal fullscreen controller sliding in from the bottom.
+    ///
+    /// - Parameters:
+    ///   - placementId: Placement identifier from Adapty dashboard.
+    ///   - window: Window whose root controller should become the onboarding UI.
+    ///   - force: Ignores `hasCompleted` and always shows. For testing.
+    @discardableResult
+    public func showAsRoot(
+        placementId: String,
+        in window: UIWindow,
+        force: Bool = false
+    ) async -> AFOnboardingResult {
+        guard isConfigured else {
+            return .failed(.notConfigured)
+        }
+
+        guard force || !hasCompleted else {
+            return .skipped
+        }
+
+        let hasNetwork: Bool
+        if Self.skipNetworkCheck {
+            hasNetwork = true
+        } else {
+            hasNetwork = await AFNetworkReachability.shared.isAvailable()
+        }
+
+        let result: AFOnboardingResult
+        if hasNetwork {
+            result = await showPrimaryAsRoot(placementId: placementId, in: window)
+        } else {
+            result = await showFallbackAsRoot(placementId: placementId, in: window)
+        }
+
+        if result.isFinished {
+            hasCompleted = true
+        }
+
+        handleResult(result, placementId: placementId)
+        return result
+    }
+
     // MARK: - Internal
 
     private func showWithPrimary(placementId: String, from presenter: UIViewController) async -> AFOnboardingResult {
@@ -156,6 +202,29 @@ public final class AFOnboardingKit {
             return .failed(.noFallbackUI)
         }
         return await provider.present(placementId: placementId, from: presenter)
+    }
+
+    private func showPrimaryAsRoot(placementId: String, in window: UIWindow) async -> AFOnboardingResult {
+        guard let provider = primaryProvider else { return .failed(.notConfigured) }
+        guard let rootProvider = provider as? AFRootOnboardingProvider else {
+            return await showFallbackAsRoot(placementId: placementId, in: window)
+        }
+
+        let result = await rootProvider.presentAsRoot(placementId: placementId, in: window)
+        if case .failed = result {
+            return await showFallbackAsRoot(placementId: placementId, in: window)
+        }
+        return result
+    }
+
+    private func showFallbackAsRoot(placementId: String, in window: UIWindow) async -> AFOnboardingResult {
+        guard let provider = fallbackProvider else {
+            return .failed(.noFallbackUI)
+        }
+        guard let rootProvider = provider as? AFRootOnboardingProvider else {
+            return .failed(.rootPresentationUnsupported)
+        }
+        return await rootProvider.presentAsRoot(placementId: placementId, in: window)
     }
 
     private func handleResult(_ result: AFOnboardingResult, placementId: String) {

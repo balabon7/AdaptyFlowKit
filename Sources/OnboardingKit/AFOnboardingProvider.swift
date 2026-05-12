@@ -20,6 +20,20 @@ public protocol AFOnboardingProvider: AnyObject, Sendable {
     ) async -> AFOnboardingResult
 }
 
+// MARK: - Root Onboarding Provider
+
+/// Optional provider capability for showing onboarding as the window root.
+public protocol AFRootOnboardingProvider: AnyObject, Sendable {
+
+    /// Shows onboarding by replacing `window.rootViewController`.
+    /// - Returns: `AFOnboardingResult` after completion.
+    @MainActor
+    func presentAsRoot(
+        placementId: String,
+        in window: UIWindow
+    ) async -> AFOnboardingResult
+}
+
 // MARK: - OnboardingEventHandler
 
 /// Protocol for handling onboarding events (analytics).

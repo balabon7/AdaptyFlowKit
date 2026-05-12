@@ -208,6 +208,25 @@ case .failed(let error):
 }
 ```
 
+### Show Onboarding As Root
+
+Use this when onboarding is the first app screen and should not animate in as a modal.
+The SDK still uses the configured fallback UI if Adapty fetch/config/rendering fails or display loading times out.
+
+```swift
+let result = await AFOnboardingKit.shared.showAsRoot(
+    placementId: "onboarding_main",
+    in: window
+)
+
+switch result {
+case .completed, .skipped:
+    window.rootViewController = PaywallViewController()
+case .failed:
+    window.rootViewController = MainViewController()
+}
+```
+
 ### Check Completion Status
 
 ```swift

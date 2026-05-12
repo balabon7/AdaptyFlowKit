@@ -21,7 +21,7 @@ import AdaptyUI
 /// - "Alive signal" (octopusbuilder bug fix) in delegate, not in VC
 /// - Permission requests through `AFOnboardingPermissionHandler` protocol
 /// - Shared `AFNetworkReachability` instead of creating a new monitor each time
-public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
+public final class AFAdaptyOnboardingProvider: AFOnboardingProvider, AFRootOnboardingProvider {
 
     // MARK: - Dependencies
 
@@ -69,6 +69,33 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
         }
     }
 
+    @MainActor
+    public func presentAsRoot(
+        placementId: String,
+        in window: UIWindow
+    ) async -> AFOnboardingResult {
+        let fetchTimeout = AFOnboardingKit.fetchTimeout
+        let displayTimeout = AFOnboardingKit.displayTimeout
+
+        do {
+            let onboarding = try await withTimeout(fetchTimeout) {
+                try await Adapty.getOnboarding(placementId: placementId)
+            }
+
+            let configuration = try AdaptyUI.getOnboardingConfiguration(forOnboarding: onboarding)
+
+            return await showControllerAsRoot(
+                configuration: configuration,
+                in: window,
+                displayTimeout: displayTimeout
+            )
+        } catch let error as AFOnboardingKitError {
+            return .failed(error)
+        } catch {
+            return .failed(.providerError(error))
+        }
+    }
+
     // MARK: - Private
 
     @MainActor
@@ -103,6 +130,38 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
         }
     }
 
+    @MainActor
+    private func showControllerAsRoot(
+        configuration: AdaptyUI.OnboardingConfiguration,
+        in window: UIWindow,
+        displayTimeout: TimeInterval
+    ) async -> AFOnboardingResult {
+        await withCheckedContinuation { continuation in
+            let sink = AFSingleFireContinuation(continuation)
+            let delegate = AFAdaptyOnboardingDelegateHandler(
+                completion: sink,
+                displayTimeout: displayTimeout,
+                permissionHandler: permissionHandler,
+                presentationMode: .root
+            )
+
+            do {
+                let controller = try AdaptyUI.onboardingController(
+                    with: configuration,
+                    delegate: delegate
+                )
+                controller.modalPresentationStyle = .fullScreen
+                delegate.retain(on: controller)
+
+                window.rootViewController = controller
+                window.makeKeyAndVisible()
+                delegate.beginDisplayTimeout()
+            } catch {
+                sink.resume(with: .failed(.providerError(error)))
+            }
+        }
+    }
+
     // MARK: - Timeout helper
 
     private func withTimeout<T>(
@@ -122,6 +181,11 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider {
 }
 
 // MARK: - AFAdaptyOnboardingDelegateHandler
+
+fileprivate enum AFAdaptyOnboardingPresentationMode: Equatable {
+    case modal
+    case root
+}
 
 /// Receives events from AdaptyUI and converts them to `AFOnboardingResult`.
 ///
@@ -147,6 +211,7 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
     private let completion: AFSingleFireContinuation<AFOnboardingResult>
     private let displayTimeout: TimeInterval
     private weak var permissionHandler: AFOnboardingPermissionHandler?
+    private let presentationMode: AFAdaptyOnboardingPresentationMode
 
     // MARK: - Timeout
 
@@ -157,11 +222,13 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
     init(
         completion: AFSingleFireContinuation<AFOnboardingResult>,
         displayTimeout: TimeInterval,
-        permissionHandler: AFOnboardingPermissionHandler?
+        permissionHandler: AFOnboardingPermissionHandler?,
+        presentationMode: AFAdaptyOnboardingPresentationMode = .modal
     ) {
         self.completion = completion
         self.displayTimeout = displayTimeout
         self.permissionHandler = permissionHandler
+        self.presentationMode = presentationMode
     }
 
     // MARK: - Lifetime
@@ -212,6 +279,10 @@ private final class AFAdaptyOnboardingDelegateHandler: NSObject, AdaptyOnboardin
             state = .done
             cancelDisplayTimeout()
             guard let controller else {
+                completion.resume(with: result)
+                return
+            }
+            guard presentationMode == .modal else {
                 completion.resume(with: result)
                 return
             }

@@ -47,6 +47,7 @@ final class OnboardingKitTests: XCTestCase {
         XCTAssertNotNil(AFOnboardingKitError.fetchTimeout.errorDescription)
         XCTAssertNotNil(AFOnboardingKitError.displayTimeout.errorDescription)
         XCTAssertNotNil(AFOnboardingKitError.noFallbackUI.errorDescription)
+        XCTAssertNotNil(AFOnboardingKitError.rootPresentationUnsupported.errorDescription)
         XCTAssertNotNil(AFOnboardingKitError.unknown.errorDescription)
     }
 

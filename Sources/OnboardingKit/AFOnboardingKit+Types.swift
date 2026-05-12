@@ -31,6 +31,7 @@ public enum AFOnboardingKitError: LocalizedError, Sendable {
     case fetchTimeout
     case displayTimeout
     case noFallbackUI
+    case rootPresentationUnsupported
     case providerError(Error)
     case unknown
 
@@ -40,6 +41,7 @@ public enum AFOnboardingKitError: LocalizedError, Sendable {
         case .fetchTimeout:    return "[AFOnboardingKit] Adapty fetch timed out."
         case .displayTimeout:  return "[AFOnboardingKit] Onboarding did not finish loading in time."
         case .noFallbackUI:    return "[AFOnboardingKit] Primary provider failed and no fallback UI registered."
+        case .rootPresentationUnsupported: return "[AFOnboardingKit] Provider does not support root presentation."
         case .providerError(let e): return "[AFOnboardingKit] Provider error: \(e.localizedDescription)"
         case .unknown:         return "[AFOnboardingKit] Unknown error."
         }
