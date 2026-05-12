@@ -187,6 +187,7 @@ public final class AFPaywallKit {
         // 1. Try primary provider
         if let primary = primaryProvider {
             let result = await primary.present(placementId: placementId, from: presenter)
+            print("[PaywallKit] Primary provider result: \(result) (placement=\(placementId))")
 
             switch result {
             case .purchased, .restored, .alreadyPurchased:
@@ -198,13 +199,23 @@ public final class AFPaywallKit {
                 onDismiss?()
                 return result
 
-            case .failed:
-                break // fall through to fallback
+            case .failed(let error):
+                // .subscriptionNotActive means Adapty completed the StoreKit purchase but
+                // its server hasn't confirmed premium status yet (common in sandbox).
+                // The user already paid — do NOT show the StoreKit fallback paywall.
+                if case .subscriptionNotActive = error {
+                    print("[PaywallKit] Purchase succeeded but Adapty premium not confirmed yet — skipping StoreKit fallback")
+                    handleResult(result)
+                    return result
+                }
+                print("[PaywallKit] Primary provider failed (\(error.localizedDescription)) — falling back to StoreKit")
+                break // fall through to fallback for real errors (timeout, network, etc.)
             }
         }
 
         // 2. Fallback to StoreKit with custom UI
         if let fallback = fallbackProvider {
+            print("[PaywallKit] Showing StoreKit fallback (placement=\(placementId))")
             let result = await fallback.present(placementId: placementId, from: presenter)
             handleResult(result)
             if case .cancelled = result { onDismiss?() }

@@ -160,6 +160,7 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
                 // Adapty calls didFinishPurchase with nil profile when the user cancels
                 // the Apple ID / password sheet — transaction did not complete.
                 // Keep paywall open so the user can retry or close manually.
+                print("[AdaptyProvider] didFinishPurchase: profile=nil — Apple sheet cancelled, keeping paywall open")
                 return
             }
 
@@ -168,8 +169,13 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
             }
 
             let premiumIsActive = profile.accessLevels["premium"]?.isActive == true
+            print("[AdaptyProvider] didFinishPurchase: product=\(product.vendorProductId), profile.premium=\(premiumIsActive)")
+
             let validatorIsActive = await validator.isSubscriptionActive()
+            print("[AdaptyProvider] didFinishPurchase: validatorIsActive=\(validatorIsActive)")
+
             let isActive = premiumIsActive || validatorIsActive
+            print("[AdaptyProvider] didFinishPurchase: isActive=\(isActive) → \(isActive ? ".purchased" : ".failed(.subscriptionNotActive)")")
 
             self.dismiss(controller) {
                 self.completion.resume(with: isActive ? .purchased : .failed(.subscriptionNotActive))
