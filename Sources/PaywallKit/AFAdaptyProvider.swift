@@ -230,7 +230,7 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
         switch action {
         case .close:
             dismiss(controller) { self.completion.resume(with: .cancelled) }
-        case .openURL(let url):
+        case .openURL(let url, _):
             guard UIApplication.shared.canOpenURL(url) else { return }
             UIApplication.shared.open(url)
         case .custom:
