@@ -196,6 +196,8 @@ final class AFOnboardingViewController: UIViewController {
     /// - Parameters:
     ///   - pages: Array of onboarding pages. If empty or nil, default pages are used.
     ///   - accentColor: Color for buttons and page control. If nil, .systemBlue is used
+    var completionButtonTitle: String = "Get Started"
+
     init(pages: [AFOnboardingPage]? = nil, accentColor: UIColor? = nil) {
         // Validation: use custom pages if they're not empty, otherwise use defaults
         if let customPages = pages, !customPages.isEmpty {
@@ -357,7 +359,7 @@ final class AFOnboardingViewController: UIViewController {
             self.animateBackButton(show: !isFirst, animated: animated)
             
             // Update primary button title
-            self.primaryButton.setTitle(isLast ? "Get Started" : "Continue", for: .normal)
+            self.primaryButton.setTitle(isLast ? self.completionButtonTitle : "Continue", for: .normal)
         }
 
         let applyPageContent = {

@@ -27,6 +27,11 @@ public final class AFDefaultOnboardingAdapter: UIViewController, AFOnboardingKit
 
     private static var sharedPages: [AFOnboardingPage]?
 
+    /// Title for the button on the last onboarding page.
+    /// Defaults to "Get Started". Set to "Close" for tutorial mode.
+    @MainActor
+    public static var completionButtonTitle: String = "Get Started"
+
     /// Custom onboarding pages displayed in fallback UI.
     /// Set before calling `AFOnboardingKit.configure()`.
     /// At least one page is required.
@@ -76,6 +81,7 @@ public final class AFDefaultOnboardingAdapter: UIViewController, AFOnboardingKit
             pages: Self.sharedPages,
             accentColor: AFAppearance.accentColor
         )
+        onboardingVC.completionButtonTitle = Self.completionButtonTitle
         onboardingVC.onCompletion = { [weak self] in
             self?.dismiss(animated: true) {
                 self?.context?.complete()
