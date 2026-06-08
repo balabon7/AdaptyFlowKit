@@ -118,6 +118,7 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider, AFRootOnboa
                     delegate: delegate
                 )
                 controller.modalPresentationStyle = .fullScreen
+                controller.view.backgroundColor = AFAppearance.onboardingBackgroundColor
                 delegate.retain(on: controller)
 
                 presenter.present(controller, animated: true) {
@@ -151,6 +152,7 @@ public final class AFAdaptyOnboardingProvider: AFOnboardingProvider, AFRootOnboa
                     delegate: delegate
                 )
                 controller.modalPresentationStyle = .fullScreen
+                controller.view.backgroundColor = AFAppearance.onboardingBackgroundColor
                 delegate.retain(on: controller)
 
                 window.rootViewController = controller

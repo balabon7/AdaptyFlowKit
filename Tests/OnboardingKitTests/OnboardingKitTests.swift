@@ -65,6 +65,15 @@ final class OnboardingKitTests: XCTestCase {
 
         let noPaywallFlow = AFAppFlowResult(onboarding: .completed, paywall: nil)
         XCTAssertFalse(noPaywallFlow.isSubscribed)
+        XCTAssertNil(noPaywallFlow.rating)
+    }
+
+    func testAppFlowResultIncludesRating() {
+        let flow = AFAppFlowResult(onboarding: .completed, paywall: nil, rating: .positive)
+
+        guard case .positive? = flow.rating else {
+            return XCTFail("Expected positive rating result")
+        }
     }
 
     // MARK: - AFOnboardingPermissionAction

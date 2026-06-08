@@ -26,6 +26,11 @@ public final class AFAppearance {
     /// Set this once in AppDelegate before configuring any kits.
     public static var accentColor: UIColor = .systemBlue
     
+    /// Background color for the Adapty onboarding controller.
+    /// Visible during content loading and around web view edges.
+    /// Default: `.black`
+    public static var onboardingBackgroundColor: UIColor = .black
+
     /// Color for the Submit button in RatingKit.
     /// Default: uses `accentColor`
     ///

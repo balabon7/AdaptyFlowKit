@@ -40,7 +40,7 @@ final class AFRatingPromptViewController: UIViewController {
 
     private let alertView: UIView = {
         let v = UIView()
-        v.backgroundColor = .systemBackground
+        v.backgroundColor = AFRatingKit.cardBackgroundColor ?? .systemBackground
         v.layer.cornerRadius = 20
         v.layer.masksToBounds = false
         v.layer.borderWidth = 1
@@ -58,7 +58,7 @@ final class AFRatingPromptViewController: UIViewController {
         l.textAlignment = .center
         l.numberOfLines = 0
         l.font = .systemFont(ofSize: 20, weight: .bold)
-        l.textColor = .label
+        l.textColor = (AFRatingKit.cardBackgroundColor ?? .systemBackground).isDark ? .white : .label
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }()
@@ -68,7 +68,9 @@ final class AFRatingPromptViewController: UIViewController {
         l.text = "Enjoying the app? Your rating helps us improve."
         l.textAlignment = .center
         l.numberOfLines = 0
-        l.textColor = .secondaryLabel
+        l.textColor = (AFRatingKit.cardBackgroundColor ?? .systemBackground).isDark
+            ? UIColor.white.withAlphaComponent(0.65)
+            : .secondaryLabel
         l.font = .systemFont(ofSize: 15, weight: .medium)
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
@@ -78,7 +80,7 @@ final class AFRatingPromptViewController: UIViewController {
         let l = UILabel()
         l.text = "Thanks for your feedback!"
         l.textAlignment = .center
-        l.textColor = .label
+        l.textColor = (AFRatingKit.cardBackgroundColor ?? .systemBackground).isDark ? .white : .label
         l.font = .systemFont(ofSize: 15, weight: .semibold)
         l.alpha = 0
         l.translatesAutoresizingMaskIntoConstraints = false
@@ -99,10 +101,13 @@ final class AFRatingPromptViewController: UIViewController {
         let b = UIButton(type: .system)
         b.setTitle("Not now", for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
-        b.setTitleColor(.secondaryLabel, for: .normal)
+        let isDark = (AFRatingKit.cardBackgroundColor ?? .systemBackground).isDark
+        b.setTitleColor(isDark ? UIColor.white.withAlphaComponent(0.6) : .secondaryLabel, for: .normal)
         b.layer.cornerRadius = 12
         b.layer.borderWidth = 1.5
-        b.layer.borderColor = UIColor.secondaryLabel.withAlphaComponent(0.25).cgColor
+        b.layer.borderColor = isDark
+            ? UIColor.white.withAlphaComponent(0.25).cgColor
+            : UIColor.secondaryLabel.withAlphaComponent(0.25).cgColor
         b.backgroundColor = .clear
         b.translatesAutoresizingMaskIntoConstraints = false
         return b
@@ -268,6 +273,17 @@ final class AFRatingPromptViewController: UIViewController {
             isAnswered = true
             onResult(.dismissed)
         }
+    }
+}
+
+// MARK: - UIColor+isDark
+
+private extension UIColor {
+    /// `true` when ITU-R 601 luminance < 0.5 — used to pick white vs dark text.
+    var isDark: Bool {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (0.299 * r + 0.587 * g + 0.114 * b) < 0.5
     }
 }
 

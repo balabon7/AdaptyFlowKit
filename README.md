@@ -441,7 +441,7 @@ AFRatingKit.shared.resetState()
 
 ## First Launch Flow — AFAppFlowKit
 
-Coordinates the complete first-launch experience: onboarding → paywall → main screen.
+Coordinates the complete first-launch experience: onboarding → optional paywall → optional rating → main screen.
 
 ### Configure
 
@@ -449,9 +449,13 @@ Coordinates the complete first-launch experience: onboarding → paywall → mai
 AFAppFlowKit.configure(
     onboardingPlacementId: "onboarding_main",
     paywallPlacementId: "paywall_after_onboarding",
-    showPaywallAfterOnboarding: true
+    showPaywallAfterOnboarding: true,
+    showRatingAfterOnboarding: true
 )
 ```
+
+Set `showRatingAfterOnboarding` to `false` to continue to the main screen without
+showing RatingKit. RatingKit must be configured before running the flow.
 
 ### Run
 
@@ -479,6 +483,7 @@ class RootViewController: UIViewController {
 let result: AFAppFlowResult
 result.onboarding   // AFOnboardingResult — completed / skipped / failed
 result.paywall      // AFPaywallResult? — nil if paywall was not shown
+result.rating       // AFRatingResult? — nil if RatingKit was disabled or onboarding failed
 result.isSubscribed // true if user purchased or already had subscription
 ```
 

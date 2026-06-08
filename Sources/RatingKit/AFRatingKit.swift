@@ -48,6 +48,10 @@ public final class AFRatingKit {
     /// If `nil` — silently dismissed.
     public static var negativeFeedbackURL: URL? = nil
 
+    /// Background color of the rating card. Text/border colors adapt automatically.
+    /// Default: `nil` → `.systemBackground` (white).
+    public static var cardBackgroundColor: UIColor? = nil
+
     // MARK: - Singleton
 
     public static let shared = AFRatingKit()
