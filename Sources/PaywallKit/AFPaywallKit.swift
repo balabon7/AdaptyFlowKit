@@ -184,9 +184,16 @@ public final class AFPaywallKit {
         isPresenting = true
         defer { isPresenting = false }
 
+        // Present from the real top-most controller. If `presenter` is already
+        // presenting something (e.g. a rating overlay / system review sheet that
+        // just appeared or is mid-dismiss), `UIViewController.present` fails
+        // silently — the provider's continuation never resumes, `present()` never
+        // returns, and `isPresenting` stays stuck `true`, blocking every later paywall.
+        let target = Self.topMostPresenter(from: presenter)
+
         // 1. Try primary provider
         if let primary = primaryProvider {
-            let result = await primary.present(placementId: placementId, from: presenter)
+            let result = await primary.present(placementId: placementId, from: target)
             print("[PaywallKit] Primary provider result: \(result) (placement=\(placementId))")
 
             switch result {
@@ -216,7 +223,7 @@ public final class AFPaywallKit {
         // 2. Fallback to StoreKit with custom UI
         if let fallback = fallbackProvider {
             print("[PaywallKit] Showing StoreKit fallback (placement=\(placementId))")
-            let result = await fallback.present(placementId: placementId, from: presenter)
+            let result = await fallback.present(placementId: placementId, from: target)
             handleResult(result)
             if case .cancelled = result { onDismiss?() }
             return result
@@ -224,6 +231,19 @@ public final class AFPaywallKit {
 
         // 3. No fallback available
         return .failed(.noProducts)
+    }
+
+    // MARK: - Presenter resolution
+
+    /// Walks down the presentation chain to the controller that is actually on top
+    /// and can present. Skips a controller that is mid-dismiss, since presenting
+    /// from it would fail silently.
+    private static func topMostPresenter(from presenter: UIViewController) -> UIViewController {
+        var vc = presenter
+        while let presented = vc.presentedViewController, !presented.isBeingDismissed {
+            vc = presented
+        }
+        return vc
     }
 
     // MARK: - Event handling
