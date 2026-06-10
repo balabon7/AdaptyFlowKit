@@ -101,6 +101,7 @@ public final class AFRatingKit {
     // MARK: - Throttle
 
     private func shouldShowPrompt() -> Bool {
+        if storage.hasSubmitted { return false }
         if storage.hasRatedThisVersion { return false }
 
         if let lastDate = storage.lastPromptDate {
@@ -135,6 +136,7 @@ public final class AFRatingKit {
     private func handleResult(_ result: AFRatingResult) {
         switch result {
         case .positive:
+            storage.hasSubmitted = true
             storage.setHasRated(for: appVersion)
             storage.lastPromptDate = Date()
             requestAppleReview()
@@ -148,7 +150,7 @@ public final class AFRatingKit {
             eventHandler?.onNegativeFeedback()
 
         case .dismissed:
-            // Don't save stats on dismiss — allow showing again on next launch
+            // Don't save stats on dismiss — allows showing again on next launch
             eventHandler?.onDismissed()
 
         case .throttled:
@@ -227,6 +229,7 @@ private final class AFRatingStorage {
     private enum Keys {
         static let lastPromptDate = "RatingKit.lastPromptDate"
         static let ratedVersions  = "RatingKit.ratedVersions"
+        static let hasSubmitted   = "RatingKit.hasSubmitted"
     }
 
     private let defaults = UserDefaults.standard
@@ -234,6 +237,11 @@ private final class AFRatingStorage {
     var lastPromptDate: Date? {
         get { defaults.object(forKey: Keys.lastPromptDate) as? Date }
         set { defaults.set(newValue, forKey: Keys.lastPromptDate) }
+    }
+
+    var hasSubmitted: Bool {
+        get { defaults.bool(forKey: Keys.hasSubmitted) }
+        set { defaults.set(newValue, forKey: Keys.hasSubmitted) }
     }
 
     var hasRatedThisVersion: Bool {
@@ -249,7 +257,7 @@ private final class AFRatingStorage {
     }
 
     func reset() {
-        [Keys.lastPromptDate, Keys.ratedVersions]
+        [Keys.lastPromptDate, Keys.ratedVersions, Keys.hasSubmitted]
             .forEach { defaults.removeObject(forKey: $0) }
     }
 }
