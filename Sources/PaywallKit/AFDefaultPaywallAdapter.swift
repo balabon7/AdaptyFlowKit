@@ -123,10 +123,26 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     public override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
-        // Push rows below the floating close button
         let top = view.safeAreaInsets.top + 16 + 32 + 20
         tableView.contentInset.top = top
         tableView.scrollIndicatorInsets.top = top
+    }
+
+    public override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Size tableHeaderView after the tableView has a real width
+        guard let header = tableView.tableHeaderView else { return }
+        let targetWidth = tableView.bounds.width
+        guard targetWidth > 0 else { return }
+        let fittingSize = header.systemLayoutSizeFitting(
+            CGSize(width: targetWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        if header.frame.height != fittingSize.height {
+            header.frame = CGRect(origin: .zero, size: CGSize(width: targetWidth, height: fittingSize.height))
+            tableView.tableHeaderView = header
+        }
     }
 
     public override func viewDidDisappear(_ animated: Bool) {
@@ -196,7 +212,8 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private func buildTableHeader() {
         let title    = context.title
         let subtitle = context.subtitle
-        guard title != nil || subtitle != nil else { return }
+        // Skip header if both are nil or empty strings
+        guard !(title ?? "").isEmpty || !(subtitle ?? "").isEmpty else { return }
 
         let header = UIView()
 
@@ -230,14 +247,8 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
             stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -16),
         ])
 
-        // Size header to fit its content
-        header.layoutIfNeeded()
-        let size = header.systemLayoutSizeFitting(
-            CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height),
-            withHorizontalFittingPriority: .required,
-            verticalFittingPriority: .fittingSizeLevel
-        )
-        header.frame = CGRect(origin: .zero, size: size)
+        // Frame is intentionally .zero here — viewDidLayoutSubviews sizes it once
+        // tableView has a real width, avoiding a width==0 constraint conflict.
         tableView.tableHeaderView = header
     }
 
