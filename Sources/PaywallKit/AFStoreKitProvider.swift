@@ -164,7 +164,7 @@ public final class AFPaywallKitUIFactory: AFStoreKitPaywallFactory {
 
         var paywallProducts = products.map(AFPaywallProduct.init(from:))
         paywallProducts.applyFilter(AFPaywallKit.productFilter)
-        paywallProducts.markMostPopular()
+        paywallProducts.markMostPopular(preferredId: AFPaywallKit.placementMostPopularId[placementId])
 
         weak var controllerRef: UIViewController?
 
@@ -329,9 +329,13 @@ private extension Array where Element == AFPaywallProduct {
         }
     }
 
-    /// Marks the first product as "popular" (typically the yearly plan with the best value).
-    mutating func markMostPopular() {
+    /// Marks the preferred product as "popular", falling back to the first product.
+    mutating func markMostPopular(preferredId: String? = nil) {
         guard !isEmpty else { return }
-        self[0].isPopular = true
+        if let id = preferredId, let index = firstIndex(where: { $0.id == id }) {
+            self[index].isPopular = true
+        } else {
+            self[0].isPopular = true
+        }
     }
 }

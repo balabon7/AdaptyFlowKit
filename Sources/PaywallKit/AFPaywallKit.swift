@@ -39,6 +39,12 @@ public final class AFPaywallKit {
     /// Set before calling `configure()`.
     public static var placementProductIds: [String: [String]] = [:]
 
+    /// Per-placement "most popular" product ID for the StoreKit fallback.
+    /// When set for a placement, that product gets the MOST POPULAR badge.
+    /// Placements not listed fall back to the first product.
+    /// Set before calling `configure()`.
+    public static var placementMostPopularId: [String: String] = [:]
+
     /// Timeout for provider network requests. Default: 15 seconds.
     public static var fetchTimeout: TimeInterval = 15.0
 
