@@ -299,10 +299,14 @@ final class AFStoreKitEventBridge: AFStoreKitPaywallDelegate {
     private func handleVerification(_ verification: VerificationResult<Transaction>) async -> AFPaywallResult {
         switch verification {
         case .verified(let transaction):
-            await transaction.finish()
             if transaction.productType == .consumable || transaction.productType == .nonConsumable {
+                // Do NOT finish consumables here. Leaving the transaction unfinished lets
+                // the app's Transaction.updates listener (StoreKitService) grant credits
+                // and call finish(). Finishing here removes the transaction from
+                // currentEntitlements before StoreKitService can process it.
                 return .purchased
             }
+            await transaction.finish()
             return await validator.isSubscriptionActive() ? .purchased : .failed(.subscriptionNotActive)
         case .unverified:
             return .failed(.verificationFailed)
