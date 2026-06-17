@@ -33,6 +33,12 @@ public final class AFPaywallKit {
     /// Set before calling `configure()`.
     public static var productIds: [String] = []
 
+    /// Per-placement product ID overrides for the StoreKit fallback.
+    /// When a placement is listed here its products replace `productIds` in the fallback paywall.
+    /// Placements not listed fall back to `productIds`.
+    /// Set before calling `configure()`.
+    public static var placementProductIds: [String: [String]] = [:]
+
     /// Timeout for provider network requests. Default: 15 seconds.
     public static var fetchTimeout: TimeInterval = 15.0
 

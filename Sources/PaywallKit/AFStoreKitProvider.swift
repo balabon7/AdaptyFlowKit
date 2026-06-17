@@ -56,7 +56,8 @@ public final class AFStoreKitProvider: AFPaywallProvider {
     @MainActor
     public func present(placementId: String, from presenter: UIViewController) async -> AFPaywallResult {
         do {
-            let products = try await loadProducts()
+            let ids = AFPaywallKit.placementProductIds[placementId] ?? productIds
+            let products = try await loadProducts(ids: ids)
             guard !products.isEmpty else { return .failed(.noProducts) }
             return await showPaywall(products: products, placementId: placementId, from: presenter)
         } catch {
@@ -66,11 +67,10 @@ public final class AFStoreKitProvider: AFPaywallProvider {
 
     // MARK: - Private
 
-    private func loadProducts() async throws -> [Product] {
-        guard !productIds.isEmpty else { throw AFPaywallKitError.noProductIds }
-        let products = try await Product.products(for: Set(productIds))
-        // Preserve order from productIds (yearly → monthly → weekly)
-        return productIds.compactMap { id in products.first(where: { $0.id == id }) }
+    private func loadProducts(ids: [String]) async throws -> [Product] {
+        guard !ids.isEmpty else { throw AFPaywallKitError.noProductIds }
+        let products = try await Product.products(for: Set(ids))
+        return ids.compactMap { id in products.first(where: { $0.id == id }) }
     }
 
     @MainActor
@@ -300,6 +300,9 @@ final class AFStoreKitEventBridge: AFStoreKitPaywallDelegate {
         switch verification {
         case .verified(let transaction):
             await transaction.finish()
+            if transaction.productType == .consumable || transaction.productType == .nonConsumable {
+                return .purchased
+            }
             return await validator.isSubscriptionActive() ? .purchased : .failed(.subscriptionNotActive)
         case .unverified:
             return .failed(.verificationFailed)
