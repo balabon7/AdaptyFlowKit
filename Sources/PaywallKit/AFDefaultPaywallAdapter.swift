@@ -13,11 +13,6 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     // MARK: - Static Configuration
     //
     // Set before showing paywall — usually in AppDelegate or PaywallKit.configure().
-    //
-    // Example:
-    //   AFDefaultPaywallAdapter.privacyURL = URL(string: "https://yourapp.com/privacy")
-    //   AFDefaultPaywallAdapter.termsURL   = URL(string: "https://yourapp.com/terms")
-    //   AFAppearance.accentColor = UIColor(red: 0.91, green: 0.137, blue: 0.102, alpha: 1)
 
     /// URL Privacy Policy. If `nil` — button is inactive (but visible).
     public static var privacyURL: URL? = nil
@@ -31,22 +26,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     public static func make(context: AFPaywallUIContext) -> UIViewController {
         let vc = AFDefaultPaywallAdapter()
         vc.context = context
-
-        // Full screen mode for onboarding/launch
         vc.modalPresentationStyle = .fullScreen
-
-        // For pageSheet/formSheet mode uncomment:
-        // vc.modalPresentationStyle = .pageSheet
-        // if #available(iOS 15.0, *) {
-        //     if let sheet = vc.sheetPresentationController {
-        //         sheet.detents = [.large()]
-        //         sheet.prefersGrabberVisible = true
-        //         sheet.delegate = vc
-        //     }
-        // } else {
-        //     vc.presentationController?.delegate = vc
-        // }
-
         return vc
     }
 
@@ -54,13 +34,9 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     private var context: AFPaywallUIContext!
     private var selectedProduct: AFPaywallProduct?
-    private var planButtons: [PlanButton] = []
-    private var didClose = false  // Prevent double call of close()
+    private var didClose = false
 
-    // Accent color from context
-    private var accentColor: UIColor { 
-        context.accentColor 
-    }
+    private var accentColor: UIColor { context.accentColor }
 
     // MARK: - UI
 
@@ -75,41 +51,17 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         return b
     }()
 
-    private lazy var headingStack: UIStackView = {
-        let s = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
-        s.axis = .vertical
-        s.spacing = 8
-        s.alignment = .center
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
-    }()
-
-    private lazy var titleLabel: UILabel = {
-        let l = UILabel()
-        l.text = context.title
-        l.font = .systemFont(ofSize: 28, weight: .bold)
-        l.textColor = .label
-        l.textAlignment = .center
-        l.numberOfLines = 0
-        return l
-    }()
-
-    private lazy var subtitleLabel: UILabel = {
-        let l = UILabel()
-        l.text = context.subtitle
-        l.font = .systemFont(ofSize: 15)
-        l.textColor = .secondaryLabel
-        l.textAlignment = .center
-        l.numberOfLines = 0
-        return l
-    }()
-
-    private lazy var plansStack: UIStackView = {
-        let s = UIStackView()
-        s.axis = .vertical
-        s.spacing = 10
-        s.translatesAutoresizingMaskIntoConstraints = false
-        return s
+    private lazy var tableView: UITableView = {
+        let tv = UITableView(frame: .zero, style: .plain)
+        tv.separatorStyle = .none
+        tv.backgroundColor = .clear
+        tv.showsVerticalScrollIndicator = false
+        tv.rowHeight = 82
+        tv.translatesAutoresizingMaskIntoConstraints = false
+        tv.dataSource = self
+        tv.delegate = self
+        tv.register(PlanCell.self, forCellReuseIdentifier: PlanCell.reuseId)
+        return tv
     }()
 
     private lazy var continueButton: UIButton = {
@@ -141,20 +93,6 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private lazy var privacyButton = makeTextButton("Privacy Policy", action: #selector(privacyTapped))
     private lazy var restoreButton = makeTextButton("Restore",        action: #selector(restoreTapped))
 
-    private lazy var scrollView: UIScrollView = {
-        let sv = UIScrollView()
-        sv.showsVerticalScrollIndicator = false
-        sv.alwaysBounceVertical = true
-        sv.translatesAutoresizingMaskIntoConstraints = false
-        return sv
-    }()
-
-    private lazy var scrollContent: UIView = {
-        let v = UIView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }()
-
     private lazy var loadingOverlay: UIView = {
         let v = UIView()
         v.backgroundColor = UIColor.black.withAlphaComponent(0.35)
@@ -178,16 +116,21 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     public override func viewDidLoad() {
         super.viewDidLoad()
         setupLayout()
-        buildPlanButtons()
+        buildTableHeader()
         selectDefault()
         observeState()
     }
 
+    public override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        // Push rows below the floating close button
+        let top = view.safeAreaInsets.top + 16 + 32 + 20
+        tableView.contentInset.top = top
+        tableView.scrollIndicatorInsets.top = top
+    }
+
     public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-
-        // If view controller is being dismissed (swipe down or other method)
-        // and we haven't called close() yet, call it now
         if isBeingDismissed && !didClose {
             didClose = true
             context.close()
@@ -197,7 +140,6 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     // MARK: - UIAdaptivePresentationControllerDelegate
 
     public func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        // Called when user dismisses via gesture (swipe down)
         if !didClose {
             didClose = true
             context.close()
@@ -209,27 +151,22 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private func setupLayout() {
         view.backgroundColor = .systemBackground
 
-        // Fixed chrome: close button, continue, bottom bar, loading
+        // tableView fills the view; closeButton floats above it
+        view.addSubview(tableView)
         view.addSubview(closeButton)
         view.addSubview(continueButton)
         view.addSubview(bottomStack)
         view.addSubview(loadingOverlay)
 
-        // Scrollable content: scrollView starts below closeButton
-        view.addSubview(scrollView)
-        scrollView.addSubview(scrollContent)
-        scrollContent.addSubview(headingStack)
-        scrollContent.addSubview(plansStack)
-
         NSLayoutConstraint.activate([
 
-            // Close — fixed top right
+            // Close — fixed top-right, floats above tableView
             closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             closeButton.widthAnchor.constraint(equalToConstant: 32),
             closeButton.heightAnchor.constraint(equalToConstant: 32),
 
-            // Bottom bar — fixed to safeArea bottom
+            // Bottom bar — pinned to safeArea bottom
             bottomStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             bottomStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             bottomStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
@@ -240,31 +177,13 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
             continueButton.bottomAnchor.constraint(equalTo: bottomStack.topAnchor, constant: -12),
             continueButton.heightAnchor.constraint(equalToConstant: 54),
 
-            // ScrollView — fills space between closeButton and continueButton
-            scrollView.topAnchor.constraint(equalTo: closeButton.bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: continueButton.topAnchor, constant: -8),
+            // TableView — from view top to continueButton; contentInset handles close button gap
+            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: continueButton.topAnchor, constant: -8),
 
-            // ScrollContent — same width as scrollView, height driven by content
-            scrollContent.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-            scrollContent.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-            scrollContent.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            scrollContent.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            scrollContent.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-
-            // Heading
-            headingStack.topAnchor.constraint(equalTo: scrollContent.topAnchor, constant: 20),
-            headingStack.leadingAnchor.constraint(equalTo: scrollContent.leadingAnchor, constant: 32),
-            headingStack.trailingAnchor.constraint(equalTo: scrollContent.trailingAnchor, constant: -32),
-
-            // Plans — below heading, bottom edge defines scroll content height
-            plansStack.topAnchor.constraint(equalTo: headingStack.bottomAnchor, constant: 28),
-            plansStack.leadingAnchor.constraint(equalTo: scrollContent.leadingAnchor, constant: 20),
-            plansStack.trailingAnchor.constraint(equalTo: scrollContent.trailingAnchor, constant: -20),
-            plansStack.bottomAnchor.constraint(equalTo: scrollContent.bottomAnchor, constant: -20),
-
-            // Loading overlay — covers everything
+            // Loading overlay — full screen
             loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
             loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -272,21 +191,57 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         ])
     }
 
-    // MARK: - Plan Buttons
+    // MARK: - Table header (title + subtitle)
 
-    private func buildPlanButtons() {
-        context.products.enumerated().forEach { index, product in
-            let btn = PlanButton(product: product, accentColor: accentColor)
-            btn.tag = index
-            btn.addTarget(self, action: #selector(planTapped(_:)), for: .touchUpInside)
-            plansStack.addArrangedSubview(btn)
-            planButtons.append(btn)
+    private func buildTableHeader() {
+        let title    = context.title
+        let subtitle = context.subtitle
+        guard title != nil || subtitle != nil else { return }
 
-            NSLayoutConstraint.activate([
-                btn.heightAnchor.constraint(equalToConstant: 72)
-            ])
-        }
+        let header = UIView()
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
+        titleLabel.textColor = .label
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 0
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = subtitle
+        subtitleLabel.font = .systemFont(ofSize: 15)
+        subtitleLabel.textColor = .secondaryLabel
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 0
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 16),
+            stack.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 32),
+            stack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -32),
+            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -16),
+        ])
+
+        // Size header to fit its content
+        header.layoutIfNeeded()
+        let size = header.systemLayoutSizeFitting(
+            CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        header.frame = CGRect(origin: .zero, size: size)
+        tableView.tableHeaderView = header
     }
+
+    // MARK: - Selection
 
     private func selectDefault() {
         let product = context.products.first(where: { $0.isPopular }) ?? context.products.first
@@ -296,20 +251,13 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     private func select(_ product: AFPaywallProduct) {
         selectedProduct = product
+        tableView.reloadData()
 
-        planButtons.forEach {
-            $0.setSelected($0.tag == (context.products.firstIndex(where: { $0.id == product.id }) ?? -1))
-        }
-
-        // Update CTA button title based on trial availability
-        let title = product.introductoryOffer != nil
-            ? "Try Free & Subscribe"
-            : "Continue"
+        let title = product.introductoryOffer != nil ? "Try Free & Subscribe" : "Continue"
         UIView.performWithoutAnimation {
             continueButton.setTitle(title, for: .normal)
             continueButton.layoutIfNeeded()
         }
-
         continueButton.isEnabled = true
         UIView.animate(withDuration: 0.2) { self.continueButton.alpha = 1 }
     }
@@ -326,13 +274,10 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         switch state {
         case .idle:
             setLoading(false)
-
         case .purchasing, .restoring, .loading:
             setLoading(true)
-
         case .success:
-            setLoading(false) // SDK will close automatically
-
+            setLoading(false)
         case .error(let message):
             setLoading(false)
             let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
@@ -344,15 +289,10 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private func setLoading(_ loading: Bool) {
         loadingOverlay.isHidden = !loading
         continueButton.isEnabled = !loading
-        planButtons.forEach { $0.isUserInteractionEnabled = !loading }
+        tableView.isUserInteractionEnabled = !loading
     }
 
     // MARK: - Actions
-
-    @objc private func planTapped(_ sender: PlanButton) {
-        let product = context.products[sender.tag]
-        select(product)
-    }
 
     @objc private func continueTapped() {
         guard let product = selectedProduct else { return }
@@ -390,6 +330,63 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
         b.setTitleColor(.tertiaryLabel, for: .normal)
         b.addTarget(self, action: action, for: .touchUpInside)
         return b
+    }
+}
+
+// MARK: - UITableViewDataSource, UITableViewDelegate
+
+extension AFDefaultPaywallAdapter: UITableViewDataSource, UITableViewDelegate {
+
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        context.products.count
+    }
+
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: PlanCell.reuseId, for: indexPath) as! PlanCell
+        let product = context.products[indexPath.row]
+        cell.configure(product: product, accentColor: accentColor, isSelected: product.id == selectedProduct?.id)
+        return cell
+    }
+
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: false)
+        select(context.products[indexPath.row])
+    }
+}
+
+// MARK: - PlanCell
+
+private final class PlanCell: UITableViewCell {
+
+    static let reuseId = "PlanCell"
+
+    private var planButton: PlanButton?
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        backgroundColor = .clear
+        selectionStyle = .none
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(product: AFPaywallProduct, accentColor: UIColor, isSelected: Bool) {
+        planButton?.removeFromSuperview()
+
+        let btn = PlanButton(product: product, accentColor: accentColor)
+        btn.isUserInteractionEnabled = false
+        contentView.addSubview(btn)
+
+        NSLayoutConstraint.activate([
+            btn.topAnchor.constraint(equalTo: contentView.topAnchor),
+            btn.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            btn.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            btn.heightAnchor.constraint(equalToConstant: 72),
+            btn.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+        ])
+
+        btn.setSelected(isSelected)
+        planButton = btn
     }
 }
 
@@ -443,12 +440,11 @@ private final class PlanButton: UIControl {
         let cfg = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
         let iv = UIImageView(image: UIImage(systemName: "checkmark.circle.fill", withConfiguration: cfg))
         iv.tintColor = self.accentColor
-        iv.alpha = 0  // Замість isHidden використовуємо alpha
+        iv.alpha = 0
         iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
 
-    // "BEST VALUE" badge — shown only for isPopular
     private lazy var popularBadge: PaddedLabel = {
         let l = PaddedLabel()
         l.text = "MOST POPULAR"
@@ -482,19 +478,16 @@ private final class PlanButton: UIControl {
         addSubview(container)
         addSubview(popularBadge)
 
-        // Left stack: name + detail
         let leftStack = UIStackView(arrangedSubviews: [nameLabel, detailLabel])
         leftStack.axis = .vertical
         leftStack.spacing = 3
 
-        // Row: leftStack | price | checkmark
         let row = UIStackView(arrangedSubviews: [leftStack, priceLabel, checkmark])
         row.axis = .horizontal
         row.alignment = .center
         row.spacing = 12
         row.translatesAutoresizingMaskIntoConstraints = false
 
-        // Checkmark fixed size to reserve space
         checkmark.setContentHuggingPriority(.required, for: .horizontal)
         checkmark.setContentCompressionResistancePriority(.required, for: .horizontal)
         priceLabel.setContentHuggingPriority(.required, for: .horizontal)
@@ -503,7 +496,7 @@ private final class PlanButton: UIControl {
         container.addSubview(row)
 
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: topAnchor, constant: 6),  // space for badge
+            container.topAnchor.constraint(equalTo: topAnchor, constant: 6),
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             container.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -513,11 +506,9 @@ private final class PlanButton: UIControl {
             row.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
             row.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -14),
 
-            // Fixed width for checkmark to reserve space
             checkmark.widthAnchor.constraint(equalToConstant: 24),
             checkmark.heightAnchor.constraint(equalToConstant: 24),
 
-            // Badge — extends upward above container
             popularBadge.centerYAnchor.constraint(equalTo: container.topAnchor),
             popularBadge.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
         ])
@@ -526,7 +517,6 @@ private final class PlanButton: UIControl {
     private func configure() {
         nameLabel.text = product.displayName
 
-        // Detail: period or offer
         if let offer = product.introductoryOffer {
             detailLabel.text = offer
             detailLabel.textColor = self.accentColor
