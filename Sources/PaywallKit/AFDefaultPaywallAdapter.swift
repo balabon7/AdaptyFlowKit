@@ -35,6 +35,7 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private var context: AFPaywallUIContext!
     private var selectedProduct: AFPaywallProduct?
     private var didClose = false
+    private var pendingHeaderView: UIView?
 
     private var accentColor: UIColor { context.accentColor }
 
@@ -130,17 +131,32 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // Size tableHeaderView after the tableView has a real width
-        guard let header = tableView.tableHeaderView else { return }
         let targetWidth = tableView.bounds.width
         guard targetWidth > 0 else { return }
-        let fittingSize = header.systemLayoutSizeFitting(
+
+        // First layout: assign the header now that tableView has a real width,
+        // avoiding UIView-Encapsulated-Layout-Width == 0 conflicts.
+        if let pending = pendingHeaderView {
+            let height = pending.systemLayoutSizeFitting(
+                CGSize(width: targetWidth, height: UIView.layoutFittingCompressedSize.height),
+                withHorizontalFittingPriority: .required,
+                verticalFittingPriority: .fittingSizeLevel
+            ).height
+            pending.frame = CGRect(x: 0, y: 0, width: targetWidth, height: height)
+            tableView.tableHeaderView = pending
+            pendingHeaderView = nil
+            return
+        }
+
+        // Subsequent layouts (e.g. rotation): resize existing header.
+        guard let header = tableView.tableHeaderView else { return }
+        let height = header.systemLayoutSizeFitting(
             CGSize(width: targetWidth, height: UIView.layoutFittingCompressedSize.height),
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
-        )
-        if header.frame.height != fittingSize.height {
-            header.frame = CGRect(origin: .zero, size: CGSize(width: targetWidth, height: fittingSize.height))
+        ).height
+        if header.frame.height != height {
+            header.frame = CGRect(x: 0, y: 0, width: targetWidth, height: height)
             tableView.tableHeaderView = header
         }
     }
@@ -247,9 +263,9 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
             stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -16),
         ])
 
-        // Frame is intentionally .zero here — viewDidLayoutSubviews sizes it once
-        // tableView has a real width, avoiding a width==0 constraint conflict.
-        tableView.tableHeaderView = header
+        // Don't assign to tableHeaderView yet — defer to viewDidLayoutSubviews
+        // so tableView has a real width and avoids UIView-Encapsulated-Layout-Width==0 conflicts.
+        pendingHeaderView = header
     }
 
     // MARK: - Selection
