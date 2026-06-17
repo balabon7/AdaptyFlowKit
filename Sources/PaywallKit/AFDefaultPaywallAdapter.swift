@@ -141,6 +141,20 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private lazy var privacyButton = makeTextButton("Privacy Policy", action: #selector(privacyTapped))
     private lazy var restoreButton = makeTextButton("Restore",        action: #selector(restoreTapped))
 
+    private lazy var scrollView: UIScrollView = {
+        let sv = UIScrollView()
+        sv.showsVerticalScrollIndicator = false
+        sv.alwaysBounceVertical = true
+        sv.translatesAutoresizingMaskIntoConstraints = false
+        return sv
+    }()
+
+    private lazy var scrollContent: UIView = {
+        let v = UIView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        return v
+    }()
+
     private lazy var loadingOverlay: UIView = {
         let v = UIView()
         v.backgroundColor = UIColor.black.withAlphaComponent(0.35)
@@ -195,41 +209,62 @@ public final class AFDefaultPaywallAdapter: UIViewController, AFPaywallKitUI, UI
     private func setupLayout() {
         view.backgroundColor = .systemBackground
 
-        [headingStack, plansStack, continueButton, bottomStack, loadingOverlay]
-            .forEach { view.addSubview($0) }
+        // Fixed chrome: close button, continue, bottom bar, loading
         view.addSubview(closeButton)
+        view.addSubview(continueButton)
+        view.addSubview(bottomStack)
+        view.addSubview(loadingOverlay)
+
+        // Scrollable content: scrollView starts below closeButton
+        view.addSubview(scrollView)
+        scrollView.addSubview(scrollContent)
+        scrollContent.addSubview(headingStack)
+        scrollContent.addSubview(plansStack)
 
         NSLayoutConstraint.activate([
 
-            // Close — top right
+            // Close — fixed top right
             closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
             closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             closeButton.widthAnchor.constraint(equalToConstant: 32),
             closeButton.heightAnchor.constraint(equalToConstant: 32),
 
-            // Heading — center of upper third
-            headingStack.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 20),
-            headingStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            headingStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-
-            // Plans — below heading, with flexible spacing
-            plansStack.topAnchor.constraint(greaterThanOrEqualTo: headingStack.bottomAnchor, constant: 28),
-            plansStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            plansStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-
-            // Continue — immediately below plans
-            continueButton.topAnchor.constraint(equalTo: plansStack.bottomAnchor, constant: 20),
-            continueButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            continueButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            continueButton.heightAnchor.constraint(equalToConstant: 54),
-
-            // Bottom — pinned to safeArea
-            bottomStack.topAnchor.constraint(equalTo: continueButton.bottomAnchor, constant: 12),
+            // Bottom bar — fixed to safeArea bottom
             bottomStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             bottomStack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             bottomStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
 
-            // Loading overlay
+            // Continue button — fixed above bottom bar
+            continueButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            continueButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            continueButton.bottomAnchor.constraint(equalTo: bottomStack.topAnchor, constant: -12),
+            continueButton.heightAnchor.constraint(equalToConstant: 54),
+
+            // ScrollView — fills space between closeButton and continueButton
+            scrollView.topAnchor.constraint(equalTo: closeButton.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: continueButton.topAnchor, constant: -8),
+
+            // ScrollContent — same width as scrollView, height driven by content
+            scrollContent.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            scrollContent.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            scrollContent.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            scrollContent.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            scrollContent.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+
+            // Heading
+            headingStack.topAnchor.constraint(equalTo: scrollContent.topAnchor, constant: 20),
+            headingStack.leadingAnchor.constraint(equalTo: scrollContent.leadingAnchor, constant: 32),
+            headingStack.trailingAnchor.constraint(equalTo: scrollContent.trailingAnchor, constant: -32),
+
+            // Plans — below heading, bottom edge defines scroll content height
+            plansStack.topAnchor.constraint(equalTo: headingStack.bottomAnchor, constant: 28),
+            plansStack.leadingAnchor.constraint(equalTo: scrollContent.leadingAnchor, constant: 20),
+            plansStack.trailingAnchor.constraint(equalTo: scrollContent.trailingAnchor, constant: -20),
+            plansStack.bottomAnchor.constraint(equalTo: scrollContent.bottomAnchor, constant: -20),
+
+            // Loading overlay — covers everything
             loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
             loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
