@@ -172,6 +172,8 @@ public final class AFPaywallKitUIFactory: AFStoreKitPaywallFactory {
             products: paywallProducts,
             placementId: placementId,
             accentColor: accentColor,
+            title: AFPaywallKit.fallbackPaywallTitle,
+            subtitle: AFPaywallKit.fallbackPaywallSubtitle,
             purchase: { [weak delegate] paywallProduct in
                 guard
                     let original = products.first(where: { $0.id == paywallProduct.id }),

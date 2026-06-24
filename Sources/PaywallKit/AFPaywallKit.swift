@@ -53,6 +53,16 @@ public final class AFPaywallKit {
     /// Default: `.all` (no filtering).
     public static var productFilter: AFProductFilter = .all
 
+    /// Title shown on the built-in StoreKit fallback paywall (`AFDefaultPaywallAdapter`).
+    /// The primary AdaptyUI paywall takes its title from the Adapty dashboard instead.
+    /// Set before calling `configure()`. Default: `"Unlock Premium"`.
+    public static var fallbackPaywallTitle: String = "Unlock Premium"
+
+    /// Subtitle shown on the built-in StoreKit fallback paywall (`AFDefaultPaywallAdapter`).
+    /// The primary AdaptyUI paywall takes its subtitle from the Adapty dashboard instead.
+    /// Set before calling `configure()`. Default: `"Full access. Cancel anytime."`.
+    public static var fallbackPaywallSubtitle: String = "Full access. Cancel anytime."
+
     // MARK: - Singleton
 
     public static let shared = AFPaywallKit()
