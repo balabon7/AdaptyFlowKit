@@ -36,16 +36,16 @@ public final class AFAdaptyProvider: AFPaywallProvider {
         from presenter: UIViewController
     ) async -> AFPaywallResult {
         do {
-            let paywall = try await withTimeout(fetchTimeout) {
-                try await Adapty.getPaywall(placementId: placementId)
+            let flow = try await withTimeout(fetchTimeout) {
+                try await Adapty.getFlow(placementId: placementId)
             }
 
             let products = try await withTimeout(fetchTimeout) {
-                try await Adapty.getPaywallProducts(paywall: paywall)
+                try await Adapty.getPaywallProducts(flow: flow)
             }
 
-            let configuration = try await AdaptyUI.getPaywallConfiguration(
-                forPaywall: paywall,
+            let configuration = try await AdaptyUI.getFlowConfiguration(
+                forFlow: flow,
                 loadTimeout: nil,
                 products: products,
                 observerModeResolver: nil,
@@ -67,7 +67,7 @@ public final class AFAdaptyProvider: AFPaywallProvider {
 
     @MainActor
     private func showController(
-        configuration: AdaptyUI.PaywallConfiguration,
+        configuration: AdaptyUI.FlowConfiguration,
         from presenter: UIViewController
     ) async -> AFPaywallResult {
         // UIViewController.present() silently fails if presenter is not in the window hierarchy
@@ -91,7 +91,7 @@ public final class AFAdaptyProvider: AFPaywallProvider {
             )
 
             do {
-                let controller = try AdaptyUI.paywallController(
+                let controller = try AdaptyUI.flowController(
                     with: configuration,
                     delegate: delegate,
                     showDebugOverlay: false
@@ -127,7 +127,7 @@ public final class AFAdaptyProvider: AFPaywallProvider {
 
 /// Receives events from AdaptyUI and converts them to `AFPaywallResult`.
 /// Lives exactly as long as the controller via AssociatedObject.
-private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelegate {
+private final class AFAdaptyEventBridge: NSObject, AdaptyFlowControllerDelegate {
 
     private let completion: AFSingleFireContinuation<AFPaywallResult>
     private let validator: AFSubscriptionValidator
@@ -150,8 +150,8 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
 
     // MARK: - Purchase
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didFinishPurchase product: AdaptyPaywallProduct,
         purchaseResult: AdaptyPurchaseResult
     ) {
@@ -183,8 +183,8 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
         }
     }
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didFailPurchase product: AdaptyPaywallProduct,
         error: AdaptyError
     ) {
@@ -197,8 +197,8 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
 
     // MARK: - Restore
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didFinishRestoreWith profile: AdaptyProfile
     ) {
         Task { @MainActor in
@@ -212,8 +212,8 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
         }
     }
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didFailRestoreWith error: AdaptyError
     ) {
         dismiss(controller) {
@@ -223,8 +223,8 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
 
     // MARK: - Actions
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didPerform action: AdaptyUI.Action
     ) {
         switch action {
@@ -240,29 +240,30 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyPaywallControllerDelega
 
     // MARK: - Errors
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
-        didFailRenderingWith error: AdaptyUIError
+    func flowController(
+        _ controller: AdaptyFlowController,
+        didReceiveError error: AdaptyUIError
     ) {
         dismiss(controller) { self.completion.resume(with: .failed(.providerError(error))) }
     }
 
-    func paywallController(
-        _ controller: AdaptyPaywallController,
+    func flowController(
+        _ controller: AdaptyFlowController,
         didFailLoadingProductsWith error: AdaptyError
     ) -> Bool {
-        return true // Allow showing paywall without prices
+        return false
     }
 
     // MARK: - Lifecycle (no-op)
 
-    func paywallControllerDidAppear(_ controller: AdaptyPaywallController) {}
-    func paywallControllerDidDisappear(_ controller: AdaptyPaywallController) {}
-    func paywallController(_ controller: AdaptyPaywallController, didSelectProduct product: AdaptyPaywallProductWithoutDeterminingOffer) {}
-    func paywallController(_ controller: AdaptyPaywallController, didStartPurchase product: AdaptyPaywallProduct) {}
-    func paywallControllerDidStartRestore(_ controller: AdaptyPaywallController) {}
-    func paywallController(_ controller: AdaptyPaywallController, didPartiallyLoadProducts failedIds: [String]) {}
-    func paywallController(_ controller: AdaptyPaywallController, didFinishWebPaymentNavigation product: AdaptyPaywallProduct?, error: AdaptyError?) {}
+    func flowControllerDidAppear(_ controller: AdaptyFlowController) {}
+    func flowControllerDidDisappear(_ controller: AdaptyFlowController) {}
+    func flowController(_ controller: AdaptyFlowController, didSelectProduct product: AdaptyPaywallProduct) {}
+    func flowController(_ controller: AdaptyFlowController, didStartPurchase product: AdaptyPaywallProduct) {}
+    func flowControllerDidStartRestore(_ controller: AdaptyFlowController) {}
+    func flowController(_ controller: AdaptyFlowController, didPartiallyLoadProducts failedIds: [String]) {}
+    func flowController(_ controller: AdaptyFlowController, didFinishWebPaymentNavigation product: AdaptyPaywallProduct?, error: AdaptyError?) {}
+    func flowController(_ controller: AdaptyFlowController, didReceiveAnalyticEvent name: String, params: [String: any Sendable]) {}
 
     // MARK: - Helper
 

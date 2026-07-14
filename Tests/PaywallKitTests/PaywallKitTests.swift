@@ -1,6 +1,7 @@
 import XCTest
 @testable import AdaptyFlowKit
 
+@MainActor
 final class PaywallKitTests: XCTestCase {
 
     // MARK: - Static Properties

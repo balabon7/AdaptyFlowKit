@@ -1,6 +1,7 @@
 import XCTest
 @testable import AdaptyFlowKit
 
+@MainActor
 final class OnboardingKitTests: XCTestCase {
 
     // MARK: - Static Properties

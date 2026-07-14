@@ -13,7 +13,10 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/adaptyteam/AdaptySDK-iOS.git", from: "3.15.0"),
+        .package(
+            url: "https://github.com/adaptyteam/AdaptySDK-iOS.git",
+            "3.15.0"..<"5.0.0"
+        ),
     ],
     targets: [
         // Single module — all kits in one target
