@@ -74,4 +74,34 @@ final class RatingKitTests: XCTestCase {
         // resetState() clears UserDefaults storage — should not crash
         AFRatingKit.shared.resetState()
     }
+
+    // MARK: - Shared Presentation Coordinator
+
+    func testPresentationCoordinatorAllowsOnlyOneFlow() {
+        let coordinator = AFModalPresentationCoordinator()
+        let ratingLease = coordinator.acquire(.rating)
+
+        XCTAssertNotNil(ratingLease)
+        XCTAssertEqual(coordinator.activeKind, .rating)
+        XCTAssertNil(coordinator.acquire(.rating))
+        XCTAssertNil(coordinator.acquire(.paywall))
+
+        coordinator.release(ratingLease!)
+
+        XCTAssertNil(coordinator.activeKind)
+        XCTAssertNotNil(coordinator.acquire(.paywall))
+    }
+
+    func testPresentationCoordinatorIgnoresStaleLeaseRelease() {
+        let coordinator = AFModalPresentationCoordinator()
+        let firstLease = coordinator.acquire(.rating)!
+        coordinator.release(firstLease)
+
+        let secondLease = coordinator.acquire(.paywall)!
+        coordinator.release(firstLease)
+
+        XCTAssertEqual(coordinator.activeKind, .paywall)
+        coordinator.release(secondLease)
+        XCTAssertNil(coordinator.activeKind)
+    }
 }

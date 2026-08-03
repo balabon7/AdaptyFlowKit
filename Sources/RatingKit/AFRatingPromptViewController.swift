@@ -269,9 +269,33 @@ final class AFRatingPromptViewController: UIViewController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        if !isAnswered {
-            isAnswered = true
-            onResult(.dismissed)
+
+        // A full-screen modal presented above RatingKit also triggers
+        // viewDidDisappear. That is not a dismissal and must not complete the
+        // request, otherwise this controller becomes visible again with all
+        // actions disabled by `isAnswered`.
+        guard !isAnswered else { return }
+
+        let completeIfActuallyDismissed = { [weak self] in
+            guard let self,
+                  !self.isAnswered,
+                  self.presentingViewController == nil else { return }
+            self.isAnswered = true
+            self.onResult(.dismissed)
+        }
+
+        // During viewDidDisappear UIKit may still retain presentingViewController.
+        // Check after the transition completes; when merely covered, the presenter
+        // remains attached and the request correctly stays active.
+        if let transitionCoordinator {
+            transitionCoordinator.animate(alongsideTransition: nil) { _ in
+                completeIfActuallyDismissed()
+            }
+        } else {
+            Task { @MainActor in
+                await Task.yield()
+                completeIfActuallyDismissed()
+            }
         }
     }
 }

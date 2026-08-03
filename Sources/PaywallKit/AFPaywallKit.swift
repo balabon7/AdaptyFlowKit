@@ -76,13 +76,6 @@ public final class AFPaywallKit {
     private var validator: AFSubscriptionValidator?
     private var eventHandler: AFPurchaseEventHandler?
 
-    // MARK: - Presentation lock
-
-    /// Global guard — prevents parallel display of two paywalls simultaneously.
-    /// This happens when action-paywall is active, and sceneDidBecomeActive
-    /// tries to launch launch-paywall (e.g. after dismissing App Store sheet).
-    private var isPresenting = false
-
     // MARK: - Configure
 
     /// Configures SDK with a primary provider and custom fallback UI.
@@ -192,9 +185,14 @@ public final class AFPaywallKit {
             return .failed(.notConfigured)
         }
 
-        guard !isPresenting else {
+        guard let presentationLease = AFModalPresentationCoordinator.shared.acquire(.paywall) else {
+            print(
+                "[PaywallKit] Presentation blocked by active "
+                    + "\(String(describing: AFModalPresentationCoordinator.shared.activeKind)) flow"
+            )
             return .cancelled
         }
+        defer { AFModalPresentationCoordinator.shared.release(presentationLease) }
 
         if !forceShow, let validator = validator {
             let hasActiveSubscription = await validator.isSubscriptionActive()
@@ -202,9 +200,6 @@ public final class AFPaywallKit {
                 return .alreadyPurchased
             }
         }
-
-        isPresenting = true
-        defer { isPresenting = false }
 
         // Present from the real top-most controller. If `presenter` is already
         // presenting something (e.g. a rating overlay / system review sheet that

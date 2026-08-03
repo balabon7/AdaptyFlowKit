@@ -99,6 +99,21 @@ public final class AFAdaptyProvider: AFPaywallProvider {
                 controller.modalPresentationStyle = .fullScreen
                 delegate.retain(on: controller)
                 presenter.present(controller, animated: true)
+
+                // UIKit may silently reject present() while the hierarchy is
+                // transitioning. Complete with an error so PaywallKit can release
+                // its presentation lease and try the StoreKit fallback.
+                Task { @MainActor in
+                    await Task.yield()
+                    guard controller.presentingViewController == nil else { return }
+                    completionHandler.resume(with: .failed(.providerError(
+                        NSError(
+                            domain: "AFAdaptyProvider",
+                            code: -2,
+                            userInfo: [NSLocalizedDescriptionKey: "UIKit rejected paywall presentation"]
+                        )
+                    )))
+                }
             } catch {
                 completionHandler.resume(with: .failed(.providerError(error)))
             }

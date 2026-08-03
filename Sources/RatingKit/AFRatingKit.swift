@@ -62,6 +62,11 @@ public final class AFRatingKit {
     private var configuration: AFRatingKitConfiguration = .init()
     private var eventHandler: AFRatingEventHandler?
 
+    /// `true` while a RatingKit prompt is being presented or dismissed.
+    public var isPresenting: Bool {
+        AFModalPresentationCoordinator.shared.activeKind == .rating
+    }
+
     // MARK: - Configure
 
     /// Applies current static properties and activates RatingKit.
@@ -90,6 +95,23 @@ public final class AFRatingKit {
         guard force || shouldShowPrompt() else {
             return .throttled
         }
+
+        guard let presentationLease = AFModalPresentationCoordinator.shared.acquire(.rating) else {
+            print(
+                "[RatingKit] Presentation blocked by active "
+                    + "\(String(describing: AFModalPresentationCoordinator.shared.activeKind)) flow"
+            )
+            return .throttled
+        }
+        defer { AFModalPresentationCoordinator.shared.release(presentationLease) }
+
+        guard presenter.viewIfLoaded?.window != nil,
+              !presenter.isBeingDismissed,
+              presenter.presentedViewController == nil else {
+            print("[RatingKit] Presenter is unavailable or already presenting another controller")
+            return .throttled
+        }
+
         return await showPrompt(from: presenter)
     }
 
@@ -125,6 +147,14 @@ public final class AFRatingKit {
             vc.modalPresentationStyle = .overFullScreen
             vc.modalTransitionStyle = .crossDissolve
             presenter.present(vc, animated: false)
+
+            // UIKit may silently reject present() during a transition. Avoid
+            // leaving the async request (and the shared presentation lease) stuck.
+            Task { @MainActor in
+                await Task.yield()
+                guard vc.presentingViewController == nil else { return }
+                sink.resume(with: .throttled)
+            }
         }
 
         handleResult(result)

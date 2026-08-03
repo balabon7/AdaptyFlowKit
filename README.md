@@ -38,7 +38,7 @@ A comprehensive iOS SDK for managing onboarding flows, paywall presentations, an
 **Via Xcode:**
 1. File → Add Package Dependencies
 2. Enter URL: `https://github.com/balabon7/AdaptyFlowKit.git`
-3. Select version: `from 1.0.0`
+3. Select version: `from 1.0.2`
 
 **Via `Package.swift`:**
 ```swift
@@ -414,6 +414,16 @@ Call after a positive user action (e.g. successful scan, export, etc.):
 Task {
     await AFRatingKit.shared.requestIfNeeded(from: self)
 }
+```
+
+RatingKit and PaywallKit share a presentation guard. A duplicate rating request,
+or a rating request made while an AdaptyFlowKit paywall is active, returns
+`.throttled` without presenting another controller. A paywall request made while
+RatingKit is active returns `.cancelled`. You can optionally disable app controls
+while the prompt is visible:
+
+```swift
+let ratingIsVisible = AFRatingKit.shared.isPresenting
 ```
 
 The pre-prompt flow:

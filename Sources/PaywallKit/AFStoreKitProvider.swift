@@ -55,6 +55,17 @@ public final class AFStoreKitProvider: AFPaywallProvider {
 
     @MainActor
     public func present(placementId: String, from presenter: UIViewController) async -> AFPaywallResult {
+        guard presenter.viewIfLoaded?.window != nil,
+              !presenter.isBeingDismissed else {
+            return .failed(.providerError(
+                NSError(
+                    domain: "AFStoreKitProvider",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Presenter is not in the window hierarchy"]
+                )
+            ))
+        }
+
         do {
             let ids = AFPaywallKit.placementProductIds[placementId] ?? productIds
             let products = try await loadProducts(ids: ids)
@@ -100,6 +111,20 @@ public final class AFStoreKitProvider: AFPaywallProvider {
 
             eventBridge.retain(on: controller)
             presenter.present(controller, animated: true)
+
+            // UIViewController.present() does not report transition failures.
+            // Verify attachment on the next MainActor turn so callers never hang.
+            Task { @MainActor in
+                await Task.yield()
+                guard controller.presentingViewController == nil else { return }
+                sink.resume(with: .failed(.providerError(
+                    NSError(
+                        domain: "AFStoreKitProvider",
+                        code: -2,
+                        userInfo: [NSLocalizedDescriptionKey: "UIKit rejected paywall presentation"]
+                    )
+                )))
+            }
         }
     }
 }
