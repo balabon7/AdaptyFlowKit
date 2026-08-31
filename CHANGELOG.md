@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.5
+
+- Recover purchases the provider could not confirm. When a provider reports
+  `.subscriptionNotActive` — StoreKit took the payment, but the entitlement had
+  not appeared yet — PaywallKit now polls the validator for up to
+  `AFPaywallKit.purchaseConfirmationTimeout` (default 3s) and reports
+  `.purchased` once it lands. Previously this surfaced as a failure, leaving each
+  app to write its own recovery or risk charging a second time.
+- Expose `AFRatingKit.shared.hasSubmitted`. `requestIfNeeded(force: true)`
+  bypasses every throttle including "already rated", so callers that force the
+  prompt need to check this. It was readable only by reaching into RatingKit's
+  private `UserDefaults` key.
+
 ## 1.0.4
 
 - Add `AFPaywallKit.accessLevelId` (default `"premium"`). The Adapty access level

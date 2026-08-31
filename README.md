@@ -38,12 +38,12 @@ A comprehensive iOS SDK for managing onboarding flows, paywall presentations, an
 **Via Xcode:**
 1. File → Add Package Dependencies
 2. Enter URL: `https://github.com/balabon7/AdaptyFlowKit.git`
-3. Select version: `from 1.0.4`
+3. Select version: `from 1.0.5`
 
 **Via `Package.swift`:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.4")
+    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.5")
 ]
 ```
 
@@ -156,11 +156,18 @@ AFOnboardingKit.skipNetworkCheck    = false  // true = skip reachability check (
 AFPaywallKit.productIds    = ["com.app.premium.yearly"]  // required for StoreKit fallback
 AFPaywallKit.fetchTimeout  = 15.0                         // seconds, default: 15
 AFPaywallKit.accessLevelId = "premium"                    // Adapty access level, default: "premium"
+AFPaywallKit.purchaseConfirmationTimeout = 3.0            // seconds, default: 3
 ```
 
 `accessLevelId` must match the access level ID configured in your Adapty dashboard.
 If your project uses a different name, set it here — otherwise every profile check
 silently reports "no subscription".
+
+`purchaseConfirmationTimeout` covers the gap where StoreKit has taken the payment
+but the entitlement has not appeared yet. Rather than reporting failure — and
+inviting your app to ask for money a second time — PaywallKit polls the validator
+for this long and reports `.purchased` if the entitlement lands. Set `0` to report
+the failure immediately.
 
 ### Logging
 
@@ -184,6 +191,17 @@ AFRatingKit.appName                = "My App"                               // d
 AFRatingKit.minDaysBetweenPrompts  = 30                                     // default: 30
 AFRatingKit.negativeFeedbackURL    = URL(string: "mailto:support@app.com")  // default: nil
 ```
+
+Two read-only properties help you decide when to ask:
+
+```swift
+AFRatingKit.shared.hasSubmitted   // the user already rated, positively or not
+AFRatingKit.shared.isPresenting   // a prompt is on screen or dismissing
+```
+
+`requestIfNeeded(from:force: true)` bypasses every throttle, `hasSubmitted`
+included — so guard on it yourself when you force the prompt, or someone who
+already rated is asked again every time.
 
 ### AFDefaultOnboardingAdapter
 

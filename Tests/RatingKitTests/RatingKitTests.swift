@@ -104,4 +104,11 @@ final class RatingKitTests: XCTestCase {
         coordinator.release(secondLease)
         XCTAssertNil(coordinator.activeKind)
     }
+
+    // MARK: - hasSubmitted
+
+    func testHasSubmittedIsFalseAfterReset() {
+        AFRatingKit.shared.resetState()
+        XCTAssertFalse(AFRatingKit.shared.hasSubmitted)
+    }
 }

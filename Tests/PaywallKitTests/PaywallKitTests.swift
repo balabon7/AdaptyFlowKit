@@ -73,4 +73,84 @@ final class PaywallKitTests: XCTestCase {
         // Cleanup
         AFPaywallKit.accessLevelId = "premium"
     }
+
+    // MARK: - Purchase confirmation
+
+    /// Reports "not active" for the first `activeAfterCalls` checks, then active.
+    private final class StubValidator: AFSubscriptionValidator, @unchecked Sendable {
+        private let activeAfterCalls: Int
+        private(set) var callCount = 0
+
+        init(activeAfterCalls: Int) { self.activeAfterCalls = activeAfterCalls }
+
+        @MainActor
+        func isSubscriptionActive() async -> Bool {
+            callCount += 1
+            return callCount > activeAfterCalls
+        }
+    }
+
+    /// Stands in for a provider that took the payment but could not confirm it.
+    private final class UnconfirmedPurchaseProvider: AFPaywallProvider, @unchecked Sendable {
+        @MainActor
+        func present(placementId: String, from presenter: UIViewController) async -> AFPaywallResult {
+            .failed(.subscriptionNotActive)
+        }
+    }
+
+    private func configureForConfirmation(validator: AFSubscriptionValidator) {
+        AFPaywallKit.configure(
+            primaryProvider: UnconfirmedPurchaseProvider(),
+            fallbackProvider: nil,
+            validator: validator
+        )
+    }
+
+    func testUnconfirmedPurchaseIsReportedAsPurchasedOnceEntitlementAppears() async {
+        AFPaywallKit.purchaseConfirmationTimeout = 3.0
+        let validator = StubValidator(activeAfterCalls: 1)
+        configureForConfirmation(validator: validator)
+
+        let result = await AFPaywallKit.show(
+            placementId: "test",
+            from: UIViewController(),
+            forceShow: true
+        )
+
+        XCTAssertEqual(result, .purchased)
+        XCTAssertGreaterThan(validator.callCount, 1)
+    }
+
+    func testUnconfirmedPurchaseStaysFailedWhenEntitlementNeverAppears() async {
+        AFPaywallKit.purchaseConfirmationTimeout = 0.1
+        let validator = StubValidator(activeAfterCalls: .max)
+        configureForConfirmation(validator: validator)
+
+        let result = await AFPaywallKit.show(
+            placementId: "test",
+            from: UIViewController(),
+            forceShow: true
+        )
+
+        XCTAssertEqual(result, .failed(.subscriptionNotActive))
+    }
+
+    func testZeroTimeoutSkipsConfirmationEntirely() async {
+        AFPaywallKit.purchaseConfirmationTimeout = 0
+        let validator = StubValidator(activeAfterCalls: 0)
+        configureForConfirmation(validator: validator)
+
+        let result = await AFPaywallKit.show(
+            placementId: "test",
+            from: UIViewController(),
+            forceShow: true
+        )
+
+        // The validator would have said "active" on its first call; a zero
+        // timeout must not consult it at all.
+        XCTAssertEqual(result, .failed(.subscriptionNotActive))
+        XCTAssertEqual(validator.callCount, 0)
+
+        AFPaywallKit.purchaseConfirmationTimeout = 3.0
+    }
 }

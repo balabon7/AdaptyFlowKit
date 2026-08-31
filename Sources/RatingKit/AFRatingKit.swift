@@ -67,6 +67,20 @@ public final class AFRatingKit {
         AFModalPresentationCoordinator.shared.activeKind == .rating
     }
 
+    /// `true` once the user has submitted a rating, positive or negative.
+    ///
+    /// `requestIfNeeded(from:force: true)` bypasses every throttle, this one
+    /// included, so a caller that forces the prompt must check this first —
+    /// otherwise someone who already rated is asked again on every attempt:
+    ///
+    /// ```swift
+    /// guard !AFRatingKit.shared.hasSubmitted else { return }
+    /// await AFRatingKit.shared.requestIfNeeded(from: presenter, force: true)
+    /// ```
+    public var hasSubmitted: Bool {
+        storage.hasSubmitted
+    }
+
     // MARK: - Configure
 
     /// Applies current static properties and activates RatingKit.

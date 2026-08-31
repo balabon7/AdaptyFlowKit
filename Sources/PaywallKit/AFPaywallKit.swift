@@ -71,6 +71,15 @@ public final class AFPaywallKit {
     /// Set before calling `configure()`. Default: `"premium"`.
     public static var accessLevelId: String = "premium"
 
+    /// How long to keep re-checking entitlements after a purchase the provider
+    /// completed but could not confirm.
+    ///
+    /// StoreKit can take the payment moments before Adapty's backend records it.
+    /// Rather than reporting failure — and inviting the app to ask for money a
+    /// second time — the validator is polled for this long. Set to `0` to report
+    /// the failure immediately. Default: 3 seconds.
+    public static var purchaseConfirmationTimeout: TimeInterval = 3.0
+
     // MARK: - Singleton
 
     public static let shared = AFPaywallKit()
@@ -232,11 +241,18 @@ public final class AFPaywallKit {
                 return result
 
             case .failed(let error):
-                // .subscriptionNotActive means Adapty completed the StoreKit purchase but
-                // its server hasn't confirmed premium status yet (common in sandbox).
+                // .subscriptionNotActive means the provider completed the StoreKit
+                // purchase but the entitlement had not appeared yet (common in
+                // sandbox, and possible in production when validation lands late).
                 // The user already paid — do NOT show the StoreKit fallback paywall.
                 if case .subscriptionNotActive = error {
-                    AFLog.warning("[PaywallKit] Purchase succeeded but Adapty premium not confirmed yet — skipping StoreKit fallback")
+                    AFLog.warning("[PaywallKit] Purchase completed but entitlement not confirmed yet — re-checking")
+                    if await confirmPurchase() {
+                        AFLog.info("[PaywallKit] Entitlement confirmed after purchase (placement=\(placementId))")
+                        handleResult(.purchased)
+                        return .purchased
+                    }
+                    AFLog.warning("[PaywallKit] Entitlement never appeared — reporting the purchase as unconfirmed")
                     handleResult(result)
                     return result
                 }
@@ -256,6 +272,27 @@ public final class AFPaywallKit {
 
         // 3. No fallback available
         return .failed(.noProducts)
+    }
+
+    // MARK: - Purchase confirmation
+
+    /// Polls the validator until the entitlement appears or the timeout expires.
+    ///
+    /// The validator is the same three-stage check used everywhere else — cached
+    /// profile, then a fresh one, then StoreKit 2's own entitlements — so a
+    /// subscription that was genuinely paid for resolves here even while the
+    /// Adapty backend still says otherwise.
+    private func confirmPurchase() async -> Bool {
+        guard Self.purchaseConfirmationTimeout > 0, let validator else { return false }
+
+        let deadline = Date().addingTimeInterval(Self.purchaseConfirmationTimeout)
+        repeat {
+            if await validator.isSubscriptionActive() { return true }
+            guard Date() < deadline else { break }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+        } while !Task.isCancelled
+
+        return false
     }
 
     // MARK: - Presenter resolution
