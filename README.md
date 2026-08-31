@@ -38,12 +38,12 @@ A comprehensive iOS SDK for managing onboarding flows, paywall presentations, an
 **Via Xcode:**
 1. File → Add Package Dependencies
 2. Enter URL: `https://github.com/balabon7/AdaptyFlowKit.git`
-3. Select version: `from 1.0.2`
+3. Select version: `from 1.0.3`
 
 **Via `Package.swift`:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.0")
+    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.3")
 ]
 ```
 
@@ -613,7 +613,7 @@ show(placementId:)
 | iOS | 16.0+ |
 | Swift | 5.9+ |
 | Xcode | 15.0+ |
-| Adapty SDK | 3.15+ |
+| Adapty SDK | 4.0+ (tested against 4.1.2) |
 
 ---
 
