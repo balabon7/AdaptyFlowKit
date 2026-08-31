@@ -97,7 +97,7 @@ public final class AFRatingKit {
         }
 
         guard let presentationLease = AFModalPresentationCoordinator.shared.acquire(.rating) else {
-            print(
+            AFLog.debug(
                 "[RatingKit] Presentation blocked by active "
                     + "\(String(describing: AFModalPresentationCoordinator.shared.activeKind)) flow"
             )
@@ -108,7 +108,7 @@ public final class AFRatingKit {
         guard presenter.viewIfLoaded?.window != nil,
               !presenter.isBeingDismissed,
               presenter.presentedViewController == nil else {
-            print("[RatingKit] Presenter is unavailable or already presenting another controller")
+            AFLog.debug("[RatingKit] Presenter is unavailable or already presenting another controller")
             return .throttled
         }
 

@@ -40,7 +40,7 @@ public final class AFSingleFireContinuation<T> {
         // before show, so this shouldn't happen. But if it still does —
         // we log instead of crashing: resume is impossible from deinit (requires @MainActor).
         if !isConsumed {
-            print("[AFPaywallKit][warning] AFSingleFireContinuation deallocated without being consumed. " +
+            AFLog.warning("[AFPaywallKit][warning] AFSingleFireContinuation deallocated without being consumed. " +
                   "Presenter was likely not in window hierarchy. Check logs above for details.")
         }
     }

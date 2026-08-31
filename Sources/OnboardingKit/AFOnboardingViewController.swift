@@ -222,23 +222,23 @@ final class AFOnboardingViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("[AFOnboardingViewController]  viewDidLoad - pages count: \(pages.count)")
+        AFLog.debug("[AFOnboardingViewController]  viewDidLoad - pages count: \(pages.count)")
         setupUI()
         setupGestures()
         configure(with: pages[currentIndex], animated: false, direction: .forward)
-        print("[AFOnboardingViewController]  Setup complete")
+        AFLog.debug("[AFOnboardingViewController]  Setup complete")
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("[AFOnboardingViewController]  viewDidAppear - controller is visible")
-        print("[AFOnboardingViewController]  View frame: \(view.frame)")
-        print("[AFOnboardingViewController]  View subviews count: \(view.subviews.count)")
-        print("[AFOnboardingViewController]  View background: \(view.backgroundColor?.description ?? "nil")")
+        AFLog.debug("[AFOnboardingViewController]  viewDidAppear - controller is visible")
+        AFLog.debug("[AFOnboardingViewController]  View frame: \(view.frame)")
+        AFLog.debug("[AFOnboardingViewController]  View subviews count: \(view.subviews.count)")
+        AFLog.debug("[AFOnboardingViewController]  View background: \(view.backgroundColor?.description ?? "nil")")
         
         // Debug: List all subviews
         for (index, subview) in view.subviews.enumerated() {
-            print("[AFOnboardingViewController]   └─ Subview[\(index)]: \(type(of: subview)) - frame: \(subview.frame), alpha: \(subview.alpha)")
+            AFLog.debug("[AFOnboardingViewController]   └─ Subview[\(index)]: \(type(of: subview)) - frame: \(subview.frame), alpha: \(subview.alpha)")
         }
     }
 
@@ -515,37 +515,37 @@ final class AFOnboardingViewController: UIViewController {
 
     private func goToNext() {
         guard !isAnimating else { 
-            print("[AFOnboardingViewController]  goToNext blocked - animation in progress")
+            AFLog.debug("[AFOnboardingViewController]  goToNext blocked - animation in progress")
             return 
         }
         guard currentIndex < pages.count - 1 else { 
-            print("[AFOnboardingViewController]  Last page reached - calling finish()")
+            AFLog.debug("[AFOnboardingViewController]  Last page reached - calling finish()")
             finish()
             return 
         }
-        print("[AFOnboardingViewController]  Going to next page: \(currentIndex) -> \(currentIndex + 1)")
+        AFLog.debug("[AFOnboardingViewController]  Going to next page: \(currentIndex) -> \(currentIndex + 1)")
         currentIndex += 1
         configure(with: pages[currentIndex], animated: true, direction: .forward)
     }
 
     private func goToPrevious() {
         guard !isAnimating, currentIndex > 0 else { return }
-        print("[AFOnboardingViewController]  Going to previous page: \(currentIndex) -> \(currentIndex - 1)")
+        AFLog.debug("[AFOnboardingViewController]  Going to previous page: \(currentIndex) -> \(currentIndex - 1)")
         currentIndex -= 1
         configure(with: pages[currentIndex], animated: true, direction: .backward)
     }
 
     private func finish() {
-        print("[AFOnboardingViewController]  finish() called - notifying completion handler")
-        print("[AFOnboardingViewController]  onCompletion callback exists: \(onCompletion != nil)")
+        AFLog.debug("[AFOnboardingViewController]  finish() called - notifying completion handler")
+        AFLog.debug("[AFOnboardingViewController]  onCompletion callback exists: \(onCompletion != nil)")
         onCompletion?()
-        print("[AFOnboardingViewController]  onCompletion callback invoked")
+        AFLog.debug("[AFOnboardingViewController]  onCompletion callback invoked")
     }
 
     // MARK: - Actions
 
     @objc private func primaryButtonTapped() {
-        print("[AFOnboardingViewController]  Primary button tapped - current page: \(currentIndex)")
+        AFLog.debug("[AFOnboardingViewController]  Primary button tapped - current page: \(currentIndex)")
         animateButtonPress(primaryButton)
         
         // Call optional action for current page
@@ -555,12 +555,12 @@ final class AFOnboardingViewController: UIViewController {
     }
 
     @objc private func backButtonTapped() {
-        print("[AFOnboardingViewController]  Back button tapped")
+        AFLog.debug("[AFOnboardingViewController]  Back button tapped")
         goToPrevious()
     }
 
     @objc private func skipTapped() {
-        print("[AFOnboardingViewController]  Skip button tapped")
+        AFLog.debug("[AFOnboardingViewController]  Skip button tapped")
         finish()
     }
 

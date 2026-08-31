@@ -175,7 +175,7 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyFlowControllerDelegate 
                 // Adapty calls didFinishPurchase with nil profile when the user cancels
                 // the Apple ID / password sheet — transaction did not complete.
                 // Keep paywall open so the user can retry or close manually.
-                print("[AdaptyProvider] didFinishPurchase: profile=nil — Apple sheet cancelled, keeping paywall open")
+                AFLog.info("[AdaptyProvider] didFinishPurchase: profile=nil — Apple sheet cancelled, keeping paywall open")
                 return
             }
 
@@ -183,14 +183,14 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyFlowControllerDelegate 
                 service.apply(profile: profile)
             }
 
-            let premiumIsActive = profile.accessLevels["premium"]?.isActive == true
-            print("[AdaptyProvider] didFinishPurchase: product=\(product.vendorProductId), profile.premium=\(premiumIsActive)")
+            let premiumIsActive = profile.accessLevels[AFPaywallKit.accessLevelId]?.isActive == true
+            AFLog.debug("[AdaptyProvider] didFinishPurchase: product=\(product.vendorProductId), profile.premium=\(premiumIsActive)")
 
             let validatorIsActive = await validator.isSubscriptionActive()
-            print("[AdaptyProvider] didFinishPurchase: validatorIsActive=\(validatorIsActive)")
+            AFLog.debug("[AdaptyProvider] didFinishPurchase: validatorIsActive=\(validatorIsActive)")
 
             let isActive = premiumIsActive || validatorIsActive
-            print("[AdaptyProvider] didFinishPurchase: isActive=\(isActive) → \(isActive ? ".purchased" : ".failed(.subscriptionNotActive)")")
+            AFLog.debug("[AdaptyProvider] didFinishPurchase: isActive=\(isActive) → \(isActive ? ".purchased" : ".failed(.subscriptionNotActive)")")
 
             self.dismiss(controller) {
                 self.completion.resume(with: isActive ? .purchased : .failed(.subscriptionNotActive))
@@ -220,7 +220,7 @@ private final class AFAdaptyEventBridge: NSObject, AdaptyFlowControllerDelegate 
             if let service = validator as? AFProfileApplicable {
                 service.apply(profile: profile)
             }
-            let isActive = profile.accessLevels["premium"]?.isActive == true
+            let isActive = profile.accessLevels[AFPaywallKit.accessLevelId]?.isActive == true
             self.dismiss(controller) {
                 self.completion.resume(with: isActive ? .restored : .failed(.noActiveSubscription))
             }

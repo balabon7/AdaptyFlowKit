@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.4
+
+- Add `AFPaywallKit.accessLevelId` (default `"premium"`). The Adapty access level
+  was hardcoded in five places, so any project not using `premium` silently saw
+  every subscription check report "not subscribed".
+- Route all SDK logging through `AdaptyFlowKit.logHandler` / `AdaptyFlowKit.logLevel`.
+  The SDK previously emitted 39 unconditional `print()` calls that host apps could
+  not silence. Release builds now emit only `.warning` and `.error`; DEBUG builds
+  keep full tracing. Set `logLevel = .off` to silence it entirely, or assign a
+  handler to route records into OSLog, Firebase, or your own logger.
+- Deprecate `AFPaywallKitLogger`, `AFPaywallKitLogLevel`, and `AFConsoleLogger`.
+  They were declared public but never wired up — the SDK offered no way to install
+  one, so they had no effect. Use the logging API above.
+
 ## 1.0.3
 
 - Verified compatibility with Adapty SDK 4.1.2 — no source changes required.

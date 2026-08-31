@@ -37,6 +37,11 @@ let package = Package(
 
         // Tests
         .testTarget(
+            name: "AdaptyFlowKitTests",
+            dependencies: ["AdaptyFlowKit"],
+            path: "Tests/AdaptyFlowKitTests"
+        ),
+        .testTarget(
             name: "PaywallKitTests",
             dependencies: ["AdaptyFlowKit"],
             path: "Tests/PaywallKitTests"

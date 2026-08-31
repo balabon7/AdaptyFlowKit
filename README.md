@@ -38,12 +38,12 @@ A comprehensive iOS SDK for managing onboarding flows, paywall presentations, an
 **Via Xcode:**
 1. File → Add Package Dependencies
 2. Enter URL: `https://github.com/balabon7/AdaptyFlowKit.git`
-3. Select version: `from 1.0.3`
+3. Select version: `from 1.0.4`
 
 **Via `Package.swift`:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.3")
+    .package(url: "https://github.com/balabon7/AdaptyFlowKit.git", from: "1.0.4")
 ]
 ```
 
@@ -155,7 +155,27 @@ AFOnboardingKit.skipNetworkCheck    = false  // true = skip reachability check (
 ```swift
 AFPaywallKit.productIds    = ["com.app.premium.yearly"]  // required for StoreKit fallback
 AFPaywallKit.fetchTimeout  = 15.0                         // seconds, default: 15
+AFPaywallKit.accessLevelId = "premium"                    // Adapty access level, default: "premium"
 ```
+
+`accessLevelId` must match the access level ID configured in your Adapty dashboard.
+If your project uses a different name, set it here — otherwise every profile check
+silently reports "no subscription".
+
+### Logging
+
+The SDK logs through a single handler. In release builds only `.warning` and `.error`
+records are emitted; in DEBUG builds everything is.
+
+```swift
+AdaptyFlowKit.logLevel = .warning   // .debug / .info / .warning / .error / .off
+
+AdaptyFlowKit.logHandler = { level, message in   // default: prints to console
+    MyLogger.log("[AdaptyFlowKit][\(level)] \(message)")
+}
+```
+
+Set `AdaptyFlowKit.logLevel = .off` to silence the SDK entirely.
 
 ### AFRatingKit
 

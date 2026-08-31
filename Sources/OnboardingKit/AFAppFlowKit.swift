@@ -69,36 +69,36 @@ public final class AFAppFlowKit {
         // If the user already completed onboarding on a previous launch, skip everything.
         // Prevents the onboarding paywall from re-appearing on every subsequent launch.
         guard !AFOnboardingKit.shared.hasCompleted else {
-            print("[AFAppFlowKit] runFirstLaunch — onboarding already completed, skipping entire flow")
+            AFLog.debug("[AFAppFlowKit] runFirstLaunch — onboarding already completed, skipping entire flow")
             return AFAppFlowResult(onboarding: .skipped, paywall: nil, rating: nil)
         }
 
         // Step 1: Onboarding
-        print("[AFAppFlowKit] runFirstLaunch — starting onboarding (placement: \(onboardingPlacementId))")
+        AFLog.debug("[AFAppFlowKit] runFirstLaunch — starting onboarding (placement: \(onboardingPlacementId))")
         let onboardingResult = await AFOnboardingKit.shared.show(
             placementId: onboardingPlacementId,
             from: presenter
         )
-        print("[AFAppFlowKit] runFirstLaunch — onboarding result: \(onboardingResult)")
+        AFLog.debug("[AFAppFlowKit] runFirstLaunch — onboarding result: \(onboardingResult)")
 
         var paywallResult: AFPaywallResult?
         if showPaywallAfterOnboarding {
             // Step 2: Paywall — shown only right after onboarding completes for the first time
-            print("[AFAppFlowKit] runFirstLaunch — starting paywall (placement: \(paywallPlacementId))")
+            AFLog.debug("[AFAppFlowKit] runFirstLaunch — starting paywall (placement: \(paywallPlacementId))")
             paywallResult = await AFPaywallKit.shared.show(
                 placementId: paywallPlacementId,
                 from: presenter,
                 forceShow: true
             )
-            print("[AFAppFlowKit] runFirstLaunch — paywall result: \(String(describing: paywallResult))")
+            AFLog.debug("[AFAppFlowKit] runFirstLaunch — paywall result: \(String(describing: paywallResult))")
         }
 
         var ratingResult: AFRatingResult?
         if showRatingAfterOnboarding, onboardingResult.isFinished {
             // Step 3: Rating — awaited so callers can navigate to home only after it closes
-            print("[AFAppFlowKit] runFirstLaunch — starting rating prompt")
+            AFLog.debug("[AFAppFlowKit] runFirstLaunch — starting rating prompt")
             ratingResult = await AFRatingKit.shared.requestIfNeeded(from: presenter)
-            print("[AFAppFlowKit] runFirstLaunch — rating result: \(String(describing: ratingResult))")
+            AFLog.debug("[AFAppFlowKit] runFirstLaunch — rating result: \(String(describing: ratingResult))")
         }
 
         return AFAppFlowResult(

@@ -109,15 +109,18 @@ public enum AFProductFilter: Sendable {
 // MARK: - AFPaywallKitLogger
 
 /// Logger protocol. Substitute any tool: OSLog, Firebase, custom.
+@available(*, deprecated, message: "Never wired up — the SDK had no way to install one. Use AdaptyFlowKit.logHandler and AdaptyFlowKit.logLevel instead.")
 public protocol AFPaywallKitLogger: Sendable {
     func log(_ message: String, level: AFPaywallKitLogLevel)
 }
 
+@available(*, deprecated, message: "Use AFLogLevel instead.")
 public enum AFPaywallKitLogLevel: Sendable {
     case debug, info, warning, error
 }
 
 /// Default logger via `print`.
+@available(*, deprecated, message: "The SDK now logs through AdaptyFlowKit.logHandler, which prints to the console by default.")
 public struct AFConsoleLogger: AFPaywallKitLogger {
     public init() {}
     public func log(_ message: String, level: AFPaywallKitLogLevel) {

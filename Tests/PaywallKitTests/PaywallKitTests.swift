@@ -59,4 +59,18 @@ final class PaywallKitTests: XCTestCase {
         XCTAssertNotNil(AFPaywallKitError.verificationFailed.errorDescription)
         XCTAssertNotNil(AFPaywallKitError.unknown.errorDescription)
     }
+
+    // MARK: - Access Level
+
+    func testAccessLevelIdDefaultsToPremium() {
+        XCTAssertEqual(AFPaywallKit.accessLevelId, "premium")
+    }
+
+    func testAccessLevelIdIsConfigurable() {
+        AFPaywallKit.accessLevelId = "pro"
+        XCTAssertEqual(AFPaywallKit.accessLevelId, "pro")
+
+        // Cleanup
+        AFPaywallKit.accessLevelId = "premium"
+    }
 }

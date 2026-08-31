@@ -26,7 +26,7 @@ public final class AFSubscriptionService: AFSubscriptionValidator {
     public func isSubscriptionActive() async -> Bool {
         // 1. First check the cached Adapty profile
         if let profile = cachedProfile,
-           profile.accessLevels["premium"]?.isActive == true {
+           profile.accessLevels[AFPaywallKit.accessLevelId]?.isActive == true {
             return true
         }
         
@@ -35,11 +35,11 @@ public final class AFSubscriptionService: AFSubscriptionValidator {
             let profile = try await Adapty.getProfile()
             cachedProfile = profile
             
-            if profile.accessLevels["premium"]?.isActive == true {
+            if profile.accessLevels[AFPaywallKit.accessLevelId]?.isActive == true {
                 return true
             }
         } catch {
-            print("[SubscriptionService] Adapty profile fetch failed: \(error)")
+            AFLog.warning("[SubscriptionService] Adapty profile fetch failed: \(error)")
             // Continue to StoreKit fallback
         }
         
@@ -74,7 +74,7 @@ extension AFSubscriptionService: AFProfileApplicable {
     public func apply(profile: AdaptyProfile) {
         cachedProfile = profile
         
-        let isPremium = profile.accessLevels["premium"]?.isActive == true
-        print("[SubscriptionService] Profile applied. Premium: \(isPremium)")
+        let isPremium = profile.accessLevels[AFPaywallKit.accessLevelId]?.isActive == true
+        AFLog.debug("[SubscriptionService] Profile applied. Premium: \(isPremium)")
     }
 }

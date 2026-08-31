@@ -63,6 +63,14 @@ public final class AFPaywallKit {
     /// Set before calling `configure()`. Default: `"Full access. Cancel anytime."`.
     public static var fallbackPaywallSubtitle: String = "Full access. Cancel anytime."
 
+    /// Adapty access level treated as "the user has paid".
+    ///
+    /// Must match the access level ID configured in the Adapty dashboard. Change it
+    /// if your project does not use the default `premium` — otherwise every profile
+    /// check silently reports "no subscription".
+    /// Set before calling `configure()`. Default: `"premium"`.
+    public static var accessLevelId: String = "premium"
+
     // MARK: - Singleton
 
     public static let shared = AFPaywallKit()
@@ -186,7 +194,7 @@ public final class AFPaywallKit {
         }
 
         guard let presentationLease = AFModalPresentationCoordinator.shared.acquire(.paywall) else {
-            print(
+            AFLog.warning(
                 "[PaywallKit] Presentation blocked by active "
                     + "\(String(describing: AFModalPresentationCoordinator.shared.activeKind)) flow"
             )
@@ -211,7 +219,7 @@ public final class AFPaywallKit {
         // 1. Try primary provider
         if let primary = primaryProvider {
             let result = await primary.present(placementId: placementId, from: target)
-            print("[PaywallKit] Primary provider result: \(result) (placement=\(placementId))")
+            AFLog.debug("[PaywallKit] Primary provider result: \(result) (placement=\(placementId))")
 
             switch result {
             case .purchased, .restored, .alreadyPurchased:
@@ -228,18 +236,18 @@ public final class AFPaywallKit {
                 // its server hasn't confirmed premium status yet (common in sandbox).
                 // The user already paid — do NOT show the StoreKit fallback paywall.
                 if case .subscriptionNotActive = error {
-                    print("[PaywallKit] Purchase succeeded but Adapty premium not confirmed yet — skipping StoreKit fallback")
+                    AFLog.warning("[PaywallKit] Purchase succeeded but Adapty premium not confirmed yet — skipping StoreKit fallback")
                     handleResult(result)
                     return result
                 }
-                print("[PaywallKit] Primary provider failed (\(error.localizedDescription)) — falling back to StoreKit")
+                AFLog.warning("[PaywallKit] Primary provider failed (\(error.localizedDescription)) — falling back to StoreKit")
                 break // fall through to fallback for real errors (timeout, network, etc.)
             }
         }
 
         // 2. Fallback to StoreKit with custom UI
         if let fallback = fallbackProvider {
-            print("[PaywallKit] Showing StoreKit fallback (placement=\(placementId))")
+            AFLog.info("[PaywallKit] Showing StoreKit fallback (placement=\(placementId))")
             let result = await fallback.present(placementId: placementId, from: target)
             handleResult(result)
             if case .cancelled = result { onDismiss?() }
